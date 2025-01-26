@@ -1,0 +1,4 @@
+stage: "training"
+input_books: "./data"
+embeddings_model: "sentence-transformers/all-MiniLM-L6-v2"
+embeddings_path: "./data/embeddings"
