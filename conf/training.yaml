@@ -1,4 +1,12 @@
 stage: "training"
 input_books: "./data"
-embeddings_model: "sentence-transformers/all-MiniLM-L6-v2"
-embeddings_path: "./data/embeddings"
+
+preprocessing:
+  chunk_size: 100
+  chunk_overlap: 20
+  path: "../data/"
+  glob: "*.txt"
+
+embeddings:
+  embeddings_model: "sentence-transformers/all-MiniLM-L6-v2"
+  embeddings_path: "./data/embeddings"
