@@ -1,0 +1,7 @@
+chunk_size: 100
+chunk_overlap: 20
+path: "../data/"
+glob: "*.txt"
+show_progress: True
+use_multithreading: True
+sample_seed: 42

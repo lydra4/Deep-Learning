@@ -1,15 +1,7 @@
+defaults:
+  - _self_
+  - preprocessing: default
+  - embeddings: default
+
 stage: "training"
 input_books: "./data"
-
-preprocessing:
-  chunk_size: 100
-  chunk_overlap: 20
-  path: "../data/"
-  glob: "*.txt"
-  show_progress: True
-  use_multithreading: True
-  sample_seed: 42
-
-embeddings:
-  embeddings_model: "sentence-transformers/all-MiniLM-L6-v2"
-  embeddings_path: "./data/embeddings"
