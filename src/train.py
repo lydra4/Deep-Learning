@@ -3,6 +3,7 @@ import os
 
 import hydra
 from langchain_community.document_loaders import DirectoryLoader
+
 from utils.general_utils import setup_logging
 
 
@@ -24,9 +25,9 @@ def main(cfg):
         sample_seed=cfg["preprocessing"]["sample_seed"],
     )
 
-    logging.info("Loading Documents")
+    logger.info("Loading Documents")
     docs = epub_loader.load()
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()
