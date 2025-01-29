@@ -1,4 +1,4 @@
-path: "../data/"
+path: "./data/"
 glob: "*.txt"
 show_progress: True
 use_multithreading: True
