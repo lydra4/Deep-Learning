@@ -34,6 +34,7 @@ packaging==24.1
 pandas==2.2.3
 parso==0.8.4
 platformdirs==4.2.2
+pre-commit==4.1.0
 prompt_toolkit==3.0.48
 psutil==6.1.1
 pure_eval==0.2.3
@@ -41,10 +42,13 @@ pyarrow==18.1.0
 pygments==2.18.0
 pyparsing==3.2.0
 pyLDAvis==3.4.1
-python-magic-bin==0.4.14
+pylint==3.3.4
+python-json-logger==3.2.1
 pytz==2024.2
 regex==2024.11.6
 requests==2.32.3
+rich==13.9.4
+ruff==0.9.3
 scipy==1.13.1
 sentence-transformers==2.2.2
 six==1.17.0
