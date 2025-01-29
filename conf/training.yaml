@@ -4,5 +4,5 @@ defaults:
   - embeddings: default
 
 stage: "training"
-input_books: "./data"
+input_books: "../data"
 nltk: ["punkt_tab", "averaged_perceptron_tagger"]
