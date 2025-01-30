@@ -3,10 +3,10 @@ import os
 
 import hydra
 import torch
-from langchain.embeddings import HuggingFaceInstructEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import FAISS
 from langchain_community.document_loaders import DirectoryLoader
+from langchain_community.embeddings import HuggingFaceInstructEmbeddings
+from langchain_community.vectorstores.faiss import FAISS
 from utils.general_utils import setup_logging
 
 
@@ -36,19 +36,21 @@ def main(cfg):
         chunk_size=cfg["preprocessing"]["chunk_size"],
         chunk_overlap=cfg["preprocessing"]["chunk_overlap"],
     )
-    texts = text_splitter.split_documents(documents=)
+    texts = text_splitter.split_documents(documents)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    logger.info(f"Embedding Model is loaded to {device}.")
+    logger.info(f"Embedding Model is loaded to {device.upper()}.")
     embeddings = HuggingFaceInstructEmbeddings(
         model_name=cfg["embeddings"]["embeddings_model"],
         model_kwargs={"device": device},
     )
 
-    vectordb = FAISS.from_documents(
-        documents=documents,
-        embedding=embeddings
+    logger.info("Generating Vector Embeddings")
+    os.makedirs(name=cfg["embeddings"]["embeddings_path"], exist_ok=True)
+    vectordb = FAISS.from_documents(documents=documents, embedding=embeddings)
+    vectordb.save_local(
+        folder_path=cfg["embeddings"]["embeddings_path"], index_name="faiss_index_got"
     )
 
 
