@@ -46,9 +46,9 @@ def main(cfg):
         model_kwargs={"device": device},
     )
 
-    logger.info("Generating Vector Embeddings")
     os.makedirs(name=cfg["embeddings"]["embeddings_path"], exist_ok=True)
-    vectordb = FAISS.from_documents(documents=documents, embedding=embeddings)
+    logger.info("Generating Vector Embeddings")
+    vectordb = FAISS.from_documents(documents=texts, embedding=embeddings)
     vectordb.save_local(
         folder_path=cfg["embeddings"]["embeddings_path"], index_name="faiss_index_got"
     )
