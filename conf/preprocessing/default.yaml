@@ -3,5 +3,5 @@ glob: "combined_books.txt"
 show_progress: True
 use_multithreading: True
 sample_seed: 42
-chunk_size: 100
-chunk_overlap: 20
+chunk_size: 2_560_000
+chunk_overlap: 25_800
