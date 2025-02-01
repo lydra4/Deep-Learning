@@ -28,9 +28,17 @@ def main(cfg):
         sample_seed=cfg["preprocessing"]["sample_seed"],
     )
 
-    logger.info(f"Loading {cfg['preprocessing']['glob']}.")
-    documents = text_loader.load()
-    logger.info(f"{cfg['preprocessing']['glob']} successfully loaded.")
+    try:
+        logger.info(f"Loading {cfg['preprocessing']['glob']}.")
+        documents = text_loader.load()
+        if not documents:
+            logger.warning("No documents were loaded. Please check the directory path or glob pattern.")
+            return
+        logger.info(f"{cfg['preprocessing']['glob']} successfully loaded.")
+
+    except Exception as e:
+        logger.error(f"Error loading documents, {e}", exc_info=True)
+        return
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=cfg["preprocessing"]["chunk_size"],
@@ -40,15 +48,26 @@ def main(cfg):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    logger.info(f"Embedding Model is loaded to {device.upper()}.")
-    embeddings = HuggingFaceInstructEmbeddings(
-        model_name=cfg["embeddings"]["embeddings_model"],
-        model_kwargs={"device": device},
-    )
+    try:
+        embeddings = HuggingFaceInstructEmbeddings(
+            model_name=cfg["embeddings"]["embeddings_model"],
+            model_kwargs={"device": device},
+        )
+        logger.info(f"Embedding Model loaded to {device.upper()}.")
 
-    os.makedirs(name=cfg["embeddings"]["embeddings_path"], exist_ok=True)
+    except RuntimeError as e:
+        logger.error(f"CUDA memory issue: {e}. Switching to CPU.")
+        embeddings = HuggingFaceInstructEmbeddings(
+            model_name=cfg["embeddings"]["embeddings_model"],
+            model_kwargs={"device": "cpu"},
+        )
+
+    if not os.path.exists(cfg["embeddings"]["embeddings_path"])
+        os.makedirs(name=cfg["embeddings"]["embeddings_path"], exist_ok=True)
+
     logger.info("Generating Vector Embeddings")
     vectordb = FAISS.from_documents(documents=texts, embedding=embeddings)
+    logger.info("Saving Vector Embeddings")
     vectordb.save_local(
         folder_path=cfg["embeddings"]["embeddings_path"], index_name="faiss_index_got"
     )
