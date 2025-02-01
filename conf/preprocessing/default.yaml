@@ -1,5 +1,6 @@
 path: "./data/"
 glob: "combined_books.txt"
+nltk: ["punkt_tab", "averaged_perceptron_tagger"]
 show_progress: True
 use_multithreading: True
 sample_seed: 42
