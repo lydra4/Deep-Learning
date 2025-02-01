@@ -32,7 +32,9 @@ def main(cfg):
         logger.info(f"Loading {cfg['preprocessing']['glob']}.")
         documents = text_loader.load()
         if not documents:
-            logger.warning("No documents were loaded. Please check the directory path or glob pattern.")
+            logger.warning(
+                "No documents were loaded. Please check the directory path or glob pattern."
+            )
             return
         logger.info(f"{cfg['preprocessing']['glob']} successfully loaded.")
 
@@ -62,15 +64,25 @@ def main(cfg):
             model_kwargs={"device": "cpu"},
         )
 
-    if not os.path.exists(cfg["embeddings"]["embeddings_path"])
+    if not os.path.exists(cfg["embeddings"]["embeddings_path"]):
         os.makedirs(name=cfg["embeddings"]["embeddings_path"], exist_ok=True)
 
     logger.info("Generating Vector Embeddings")
     vectordb = FAISS.from_documents(documents=texts, embedding=embeddings)
     logger.info("Saving Vector Embeddings")
     vectordb.save_local(
-        folder_path=cfg["embeddings"]["embeddings_path"], index_name="faiss_index_got"
+        folder_path=cfg["embeddings"]["embeddings_path"],
+        index_name=cfg["embeddings"]["index_name"],
     )
+
+    logging.info("Loading Vector DB")
+    vectordb = FAISS.load_local(
+        folder_path=cfg["embeddings"]["embeddings_path"],
+        index_name=cfg["embeddings"]["index_name"],
+        embeddings=embeddings,
+        allow_dangerous_deserialization=True,
+    )
+    logging.info("Successfully loaded")
 
 
 if __name__ == "__main__":
