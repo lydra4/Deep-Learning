@@ -4,10 +4,10 @@ import os
 import hydra
 import torch
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from utils.general_utils import setup_logging
+from utils.process_data import EPUBProcessor
 
 
 @hydra.main(version_base=None, config_path="../conf", config_name="training.yaml")
@@ -20,27 +20,8 @@ def main(cfg):
         )
     )
 
-    text_loader = DirectoryLoader(
-        path=cfg["preprocessing"]["path"],
-        glob=cfg["preprocessing"]["glob"],
-        show_progress=cfg["preprocessing"]["show_progress"],
-        use_multithreading=cfg["preprocessing"]["use_multithreading"],
-        sample_seed=cfg["preprocessing"]["sample_seed"],
-    )
-
-    try:
-        logger.info(f"Loading {cfg['preprocessing']['glob']}.")
-        documents = text_loader.load()
-        if not documents:
-            logger.warning(
-                "No documents were loaded. Please check the directory path or glob pattern."
-            )
-            return
-        logger.info(f"{cfg['preprocessing']['glob']} successfully loaded.")
-
-    except Exception as e:
-        logger.error(f"Error loading documents, {e}", exc_info=True)
-        return
+    epub_processor = EPUBProcessor(cfg=cfg, logger=logger)
+    documents = epub_processor.process_epub_text()
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=cfg["preprocessing"]["chunk_size"],
