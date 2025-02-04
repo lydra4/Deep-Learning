@@ -21,7 +21,7 @@ def main(cfg):
     )
 
     epub_processor = EPUBProcessor(cfg=cfg, logger=logger)
-    documents = epub_processor.process_epub_text()
+    documents = epub_processor.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=cfg["preprocessing"]["chunk_size"],
