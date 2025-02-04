@@ -1,15 +1,22 @@
 import logging
 import os
 import re
+from typing import List
 
 import nltk
+from langchain.docstore.document import Document
+from langchain.document_loaders.base import BaseLoader
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from tika import parser
 
+nltk.download("stopwords")
+nltk.download("punkt")
+nltk.download("wordnet")
 
-class EPUBProcessor:
+
+class EPUBProcessor(BaseLoader):
     """
     A class for processing EPUB files by extracting and cleaning text.
 
@@ -34,70 +41,86 @@ class EPUBProcessor:
         self.cfg = cfg
         self.logger = logger
 
-    def process_epub_text(self) -> str:
+    def _preprocess_text(self, text: str) -> str:
         """
-        Extracts and cleans text from EPUB files in the specified directory.
+        Cleans the extracted text by removing URLs, punctuation, stopwords, and lemmatizing.
 
-        This method:
-        - Reads EPUB files from the configured directory.
-        - Extracts text using Apache Tika.
-        - Removes URLs and non-alphanumeric characters.
-        - Downloads required NLTK resources.
-        - Tokenizes words, removes stopwords, and applies lemmatization.
+        Args:
+            text (str): The raw text extracted from an EPUB file.
 
         Returns:
-            str: The cleaned and preprocessed text from the EPUB files.
+            str: The cleaned and preprocessed text.
+        """
+        text = re.sub(r"www.\S+", "", text)
+        text = re.sub(r"[^A-Za-z0-9\s]", "", text)
+
+        stop_words = set(stopwords.words("english"))
+        lemmatizer = WordNetLemmatizer()
+
+        tokenize_words = word_tokenize(text=text)
+
+        processed_words = [
+            lemmatizer.lemmatize(word)
+            for word in tokenize_words
+            if word not in stop_words
+        ]
+
+        return " ".join(processed_words)
+
+    def load(self) -> List[Document]:
+        """
+        Loads and processes EPUB files from the directory.
+
+        Returns:
+            List[Document]: A list of LangChain Document objects with extracted text.
 
         Raises:
-            FileNotFoundError: If the EPUB directory or no EPUB files are found.
-            ValueError: If no text is extracted from the EPUB files.
+            FileNotFoundError: If the directory does not exist or contains no EPUB files.
+            ValueError: If no text is extracted from any EPUB file.
         """
-
-        books_dir = os.path.join(os.getcwd(), self.cfg["preprocessing"]["path"])
-
-        if not os.path.isdir(books_dir):
-            raise FileNotFoundError(f"Directory not found: {books_dir}")
+        if not os.path.isdir(self.cfg["preprocessing"]["path"]):
+            raise FileNotFoundError(
+                f"Directory not found: {self.cfg['preprocessing']['path']}"
+            )
 
         epub_files = [
-            os.path.join(books_dir, book)
-            for book in os.listdir(books_dir)
-            if book.endswith(".epub")
+            os.path.join(self.cfg["preprocessing"]["path"], file)
+            for file in os.listdir(self.cfg["preprocessing"]["path"])
+            if file.endswith(".epub")
         ]
 
         if not epub_files:
-            raise FileNotFoundError(f"No epub files were found in {books_dir}")
+            raise FileNotFoundError(
+                f"No epub files found in {self.cfg['preprocessing']['path']}"
+            )
 
-        extracted_books = []
+        extracted_documents = []
 
-        for book in epub_files:
-            book_name = os.path.splitext(os.path.basename(book))[0]
+        for epub_file in epub_files:
+            book_name = os.path.splitext(os.path.basename(epub_file))[0]
+            self.logger.info(f"Processing {book_name}")
 
-            if self.logger:
-                self.logger.info(f"Reading {book_name}")
+            try:
+                raw_text = (
+                    parser.from_file(epub_file).get("content", "").lower().strip()
+                )
 
-            extracted_text = parser.from_file(
-                filename=book,
-            )["content"]
+                if not raw_text:
+                    self.logger.warning(f"No text extracted from {book_name}")
+                    continue
 
-            extracted_books.append(extracted_text.strip().lower())
+                cleaned_text = self._preprocess_text(raw_text)
+                extracted_documents.append(
+                    Document(page_content=cleaned_text, metadata={"source": book_name})
+                )
+                self.logger.info(f"Successfully processed {book_name}!\n")
 
-        if not extracted_books:
-            raise ValueError("No text extracted from books.")
+            except Exception as e:
+                self.logger.error(f"Error Processing {book_name}: {e}", exc_info=True)
 
-        raw_text = "\n\n".join(extracted_books)
+        if not extracted_documents:
+            raise ValueError(
+                f"No valid text extracted from {self.cfg['preprocessing']['path']}"
+            )
 
-        text_without_urls = re.sub(r"www.\S+", "", raw_text)
-        text_alpha_numeric = re.sub(r"[^A-Za-z0-9\s]", "", text_without_urls)
-
-        for model in self.cfg["preprocessing"]["nltk"]:
-            nltk.download(model)
-
-        lemmatizer = WordNetLemmatizer()
-        stop_words = set(stopwords.words("english"))
-        words = word_tokenize(text_alpha_numeric)
-
-        processed_text = " ".join(
-            lemmatizer.lemmatize(word) for word in words if word not in stop_words
-        )
-
-        return processed_text
+        return extracted_documents
