@@ -1,3 +1,7 @@
+chunk_size: 2_560_000
+chunk_overlap: 25_800
+
 embeddings_model: "sentence-transformers/all-MiniLM-L6-v2"
 embeddings_path: "./data/embeddings"
 index_name: "faiss_index_got"
+multiprocessing: True
