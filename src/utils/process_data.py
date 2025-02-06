@@ -24,7 +24,7 @@ class EPUBProcessor(BaseLoader):
         logger (logging.Logger, optional): Logger instance for logging messages.
     """
 
-    def __init__(self, cfg: dict, logger: Optional[logging.Logger]) -> None:
+    def __init__(self, cfg: dict, logger: Optional[logging.Logger] = None) -> None:
         """Initializes the EPUBProcessor.
 
         Args:
