@@ -80,7 +80,7 @@ class PerformEmbeddings:
             FAISS: The FAISS vector store containing the document embeddings.
         """
         if not self.texts:
-            self.split_text()
+            self._split_text()
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.embeddings = self._load_embeddings(device=device)
