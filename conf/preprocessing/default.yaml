@@ -1,6 +1,3 @@
 path: "./data/"
-show_progress: True
-use_multithreading: True
-sample_seed: 42
-chunk_size: 2_560_000
-chunk_overlap: 25_800
+file_extension: ".epub"
+nltk: ["stopwords", "punkt_tab", "wordnet"]
