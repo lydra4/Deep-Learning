@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from typing import List
+from typing import List, Optional
 
 import nltk
 from langchain.docstore.document import Document
@@ -11,14 +11,9 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from tika import parser
 
-nltk.download("stopwords")
-nltk.download("punkt")
-nltk.download("wordnet")
-
 
 class EPUBProcessor(BaseLoader):
-    """
-    A class for processing EPUB files by extracting and cleaning text.
+    """Processes EPUB files by extracting and cleaning text.
 
     This class reads EPUB files from a specified directory, extracts their text content,
     and applies preprocessing steps such as URL removal, non-alphanumeric filtering,
@@ -27,12 +22,10 @@ class EPUBProcessor(BaseLoader):
     Attributes:
         cfg (dict): Configuration dictionary containing preprocessing settings.
         logger (logging.Logger, optional): Logger instance for logging messages.
-        combined_text (str): The combined text extracted from all EPUB files (unused in the current implementation).
     """
 
-    def __init__(self, cfg: dict, logger: logging.Logger = None) -> None:
-        """
-        Initializes the EPUBProcessor with configuration settings and an optional logger.
+    def __init__(self, cfg: dict, logger: Optional[logging.Logger]) -> None:
+        """Initializes the EPUBProcessor.
 
         Args:
             cfg (dict): Configuration dictionary containing preprocessing settings.
@@ -42,14 +35,20 @@ class EPUBProcessor(BaseLoader):
         self.logger = logger
 
     def _preprocess_text(self, text: str) -> str:
-        """
-        Cleans the extracted text by removing URLs, punctuation, stopwords, and lemmatizing.
+        """Cleans and preprocesses the extracted text.
+
+        The preprocessing steps include:
+        - Removing URLs.
+        - Removing non-alphanumeric characters.
+        - Tokenizing words.
+        - Removing stopwords.
+        - Lemmatizing words.
 
         Args:
-            text (str): The raw text extracted from an EPUB file.
+            text (str): Raw text extracted from an EPUB file.
 
         Returns:
-            str: The cleaned and preprocessed text.
+            str: Cleaned and preprocessed text.
         """
         text = re.sub(r"www.\S+", "", text)
         text = re.sub(r"[^A-Za-z0-9\s]", "", text)
@@ -68,16 +67,21 @@ class EPUBProcessor(BaseLoader):
         return " ".join(processed_words)
 
     def load(self) -> List[Document]:
-        """
-        Loads and processes EPUB files from the directory.
+        """Loads and processes EPUB files from the specified directory.
+
+        Downloads necessary NLTK models, scans the directory for EPUB files, extracts their content,
+        preprocesses the text, and returns them as LangChain `Document` objects.
 
         Returns:
-            List[Document]: A list of LangChain Document objects with extracted text.
+            List[Document]: A list of LangChain Document objects containing extracted and cleaned text.
 
         Raises:
             FileNotFoundError: If the directory does not exist or contains no EPUB files.
             ValueError: If no text is extracted from any EPUB file.
         """
+        for model in self.cfg["preprocessing"]["nltk"]:
+            nltk.download(model)
+
         if not os.path.isdir(self.cfg["preprocessing"]["path"]):
             raise FileNotFoundError(
                 f"Directory not found: {self.cfg['preprocessing']['path']}"
@@ -86,7 +90,7 @@ class EPUBProcessor(BaseLoader):
         epub_files = [
             os.path.join(self.cfg["preprocessing"]["path"], file)
             for file in os.listdir(self.cfg["preprocessing"]["path"])
-            if file.endswith(".epub")
+            if file.endswith(self.cfg["preprocessing"]["file_extension"])
         ]
 
         if not epub_files:
