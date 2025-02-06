@@ -24,8 +24,8 @@ def main(cfg):
     documents = epub_processor.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=cfg["preprocessing"]["chunk_size"],
-        chunk_overlap=cfg["preprocessing"]["chunk_overlap"],
+        chunk_size=cfg["embeddings"]["chunk_size"],
+        chunk_overlap=cfg["embeddings"]["chunk_overlap"],
     )
     texts = text_splitter.split_documents(documents)
 
