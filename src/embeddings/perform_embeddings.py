@@ -113,14 +113,10 @@ class PerformEmbeddings:
         Raises:
             FileNotFoundError: If the FAISS vector database is not found.
         """
-        vectordb_path = os.path.join(
-            self.cfg["embeddings"]["embeddings_path"],
-            self.cfg["embeddings"]["index_name"],
-        )
 
-        if not os.path.exists(vectordb_path):
+        if not os.path.exists(self.cfg["embeddings"]["embeddings_path"]):
             raise FileNotFoundError(
-                f"{self.cfg['embeddings']['index_name']} does not exits at {self.cfg['embeddings']['embeddings_path']}. Please check."
+                f"The path, {self.cfg['embeddings']['embeddings_path']}, does not exits."
             )
 
         if self.logger:
