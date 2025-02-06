@@ -65,7 +65,7 @@ wordcloud==1.9.4
 wrapt==1.17.0
 zstandard==0.23.0
 
---extra-index-url https://download.pytorch.org/whl/cu121
+--extra-index-url https://download.pytorch.org/whl/cu126
 torch
 torchvision
 torchaudio
