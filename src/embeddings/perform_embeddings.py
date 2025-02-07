@@ -95,7 +95,7 @@ class PerformEmbeddings:
         index_name = re.sub(
             r'[<>:"/\\|?*]',
             "_",
-            self.cfg["embeddings"]["embeddings_model"],
+            self.cfg["embeddings"]["index_name"],
         )
 
         self.embeddings_path = os.path.join(
