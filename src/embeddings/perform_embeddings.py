@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from typing import List, Optional
 
 import torch
@@ -30,6 +31,7 @@ class PerformEmbeddings:
         self.documents = documents
         self.texts: List[Document] = []
         self.embeddings: Optional[HuggingFaceInstructEmbeddings] = None
+        self.embeddings_path: Optional[str] = None
 
     def _split_text(self) -> List[Document]:
         """Splits documents into smaller chunks based on configuration.
@@ -85,8 +87,21 @@ class PerformEmbeddings:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.embeddings = self._load_embeddings(device=device)
 
-        embeddings_path = self.cfg["embeddings"]["embeddings_path"]
-        os.makedirs(embeddings_path, exist_ok=True)
+        embeddings_model_name = re.sub(
+            r'[<>:"/\\|?*]',
+            "_",
+            self.cfg["embeddings"]["embeddings_model"].split("/")[-1],
+        )
+        self.embeddings_path = os.path.join(
+            self.cfg["embeddings"]["embeddings_path"], embeddings_model_name
+        )
+        if not os.path.exists(self.embeddings_path):
+            os.makedirs(self.embeddings_path, exist_ok=True)
+            if self.logger:
+                self.logger.info(f"Created folder at {self.embeddings_path}")
+        else:
+            if self.logger:
+                self.logger.info(f"Folder already exits at {self.embeddings_path}")
 
         if self.logger:
             self.logger.info("Generating Vector Embeddings")
@@ -97,7 +112,8 @@ class PerformEmbeddings:
             self.logger.info("Saving Vector Embeddings")
 
         vectordb.save_local(
-            folder_path=embeddings_path, index_name=self.cfg["embeddings"]["index_name"]
+            folder_path=self.embeddings_path,
+            index_name=self.cfg["embeddings"]["index_name"],
         )
 
         if self.logger:
@@ -114,16 +130,16 @@ class PerformEmbeddings:
             FileNotFoundError: If the FAISS vector database is not found.
         """
 
-        if not os.path.exists(self.cfg["embeddings"]["embeddings_path"]):
+        if not os.path.exists(self.embeddings_path):
             raise FileNotFoundError(
-                f"The path, {self.cfg['embeddings']['embeddings_path']}, does not exits."
+                f"The path, {self.embeddings_path}, does not exits."
             )
 
         if self.logger:
             self.logger.info("Loading Vector DB")
 
         vectordb = FAISS.load_local(
-            folder_path=self.cfg["embeddings"]["embeddings_path"],
+            folder_path=self.embeddings_path,
             index_name=self.cfg["embeddings"]["index_name"],
             embeddings=self.embeddings,
             allow_dangerous_deserialization=True,
