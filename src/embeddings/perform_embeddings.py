@@ -92,8 +92,14 @@ class PerformEmbeddings:
             "_",
             self.cfg["embeddings"]["embeddings_model"].split("/")[-1],
         )
+        index_name = re.sub(
+            r'[<>:"/\\|?*]',
+            "_",
+            self.cfg["embeddings"]["embeddings_model"],
+        )
+
         self.embeddings_path = os.path.join(
-            self.cfg["embeddings"]["embeddings_path"], embeddings_model_name
+            self.cfg["embeddings"]["embeddings_path"], embeddings_model_name, index_name
         )
         if not os.path.exists(self.embeddings_path):
             os.makedirs(self.embeddings_path, exist_ok=True)
