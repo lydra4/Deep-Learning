@@ -40,8 +40,7 @@ class PerformEmbeddings:
             List[Document]: List of split text documents.
         """
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.cfg["embeddings"]["chunk_size"],
-            chunk_overlap=self.cfg["embeddings"]["chunk_overlap"],
+            **self.cfg["embeddings"]["text_splitter"],
         )
         self.texts = text_splitter.split_documents(self.documents)
         if self.logger:
@@ -57,23 +56,15 @@ class PerformEmbeddings:
         Returns:
             HuggingFaceInstructEmbeddings: The loaded embeddings model.
         """
-        try:
-            embeddings = HuggingFaceInstructEmbeddings(
-                model_name=self.cfg["embeddings"]["embeddings_model"],
-                model_kwargs={"device": device},
-            )
-            if self.logger:
-                self.logger.info(f"Embedding Model loaded to {device.upper()}")
-            return embeddings
+        model_config = {
+            **self.cfg["embeddings"]["load_embeddings"],
+            "model_kwargs": {"device": device},
+        }
+        embeddings = HuggingFaceInstructEmbeddings(**model_config)
+        if self.logger:
+            self.logger.info(f"Embedding Model loaded to {device.upper()}")
 
-        except RuntimeError as e:
-            if self.logger:
-                self.logger.error(f"CUDA memory issue: {e}. Switching to CPU")
-            return HuggingFaceInstructEmbeddings(
-                model_name=self.cfg["embeddings"]["embeddings_model"],
-                multi_process=self.cfg["embeddings"]["multiprocessing"],
-                model_kwargs={"device": "cpu"},
-            )
+        return embeddings
 
     def _embed_documents(self) -> FAISS:
         """Splits, embeds documents, and saves the vector store to disk.
@@ -85,21 +76,25 @@ class PerformEmbeddings:
             self._split_text()
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
+        if self.logger:
+            self.logger.info(f"Embedding will be loaded to {device}")
         self.embeddings = self._load_embeddings(device=device)
 
         embeddings_model_name = re.sub(
             r'[<>:"/\\|?*]',
             "_",
-            self.cfg["embeddings"]["embeddings_model"].split("/")[-1],
+            self.cfg["embeddings"]["load_embeddings"]["model_name"].split("/")[-1],
         )
         index_name = re.sub(
             r'[<>:"/\\|?*]',
             "_",
-            self.cfg["embeddings"]["index_name"],
+            self.cfg["embeddings"]["embed_documents"]["index_name"],
         )
 
         self.embeddings_path = os.path.join(
-            self.cfg["embeddings"]["embeddings_path"], embeddings_model_name, index_name
+            self.cfg["embeddings"]["embed_documents"]["embeddings_path"],
+            embeddings_model_name,
+            index_name,
         )
         if not os.path.exists(self.embeddings_path):
             os.makedirs(self.embeddings_path, exist_ok=True)
@@ -119,7 +114,7 @@ class PerformEmbeddings:
 
         vectordb.save_local(
             folder_path=self.embeddings_path,
-            index_name=self.cfg["embeddings"]["index_name"],
+            index_name=self.cfg["embeddings"]["embed_documents"]["index_name"],
         )
 
         if self.logger:
@@ -146,7 +141,7 @@ class PerformEmbeddings:
 
         vectordb = FAISS.load_local(
             folder_path=self.embeddings_path,
-            index_name=self.cfg["embeddings"]["index_name"],
+            index_name=self.cfg["embeddings"]["embed_documents"]["index_name"],
             embeddings=self.embeddings,
             allow_dangerous_deserialization=True,
         )
