@@ -1,7 +1,11 @@
-chunk_size: 2_560_000
-chunk_overlap: 25_800
+text_splitter:
+  chunk_size: 2_560_000
+  chunk_overlap: 25_800
 
-embeddings_model: "sentence-transformers/all-MiniLM-L6-v2"
-embeddings_path: "./data/embeddings"
-index_name: "faiss_index_got"
-multiprocessing: True
+load_embeddings:
+  model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  show_progress: True
+
+embed_documents:
+  embeddings_path: "./data/embeddings"
+  index_name: "faiss_index_got"
