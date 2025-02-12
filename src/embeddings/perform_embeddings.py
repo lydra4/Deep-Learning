@@ -121,37 +121,7 @@ class PerformEmbeddings:
             self.logger.info("Successfully saved.")
         return vectordb
 
-    def load_vectordb(self) -> FAISS:
-        """Loads a saved FAISS vector database.
-
-        Returns:
-            FAISS: The loaded FAISS vector store.
-
-        Raises:
-            FileNotFoundError: If the FAISS vector database is not found.
-        """
-
-        if not os.path.exists(self.embeddings_path):
-            raise FileNotFoundError(
-                f"The path, {self.embeddings_path}, does not exits."
-            )
-
-        if self.logger:
-            self.logger.info("Loading Vector DB")
-
-        vectordb = FAISS.load_local(
-            folder_path=self.embeddings_path,
-            index_name=self.cfg["embeddings"]["embed_documents"]["index_name"],
-            embeddings=self.embeddings,
-            allow_dangerous_deserialization=True,
-        )
-
-        if self.logger:
-            self.logger.info("Successfully loaded")
-
-        return vectordb
-
-    def process_and_load_vectordb(self) -> FAISS:
+    def generate_vectordb(self) -> FAISS:
         """Processes documents, generates embeddings, and loads FAISS vector DB.
 
         Returns:
@@ -161,4 +131,3 @@ class PerformEmbeddings:
             self.logger.info("Starting document processing and generating embeddings")
         self._split_text()
         self._embed_documents()
-        return self.load_vectordb()
