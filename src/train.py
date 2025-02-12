@@ -21,7 +21,7 @@ def main(cfg):
     documents = epub_processor.load()
 
     perform_embeddings = PerformEmbeddings(cfg=cfg, logger=logger, documents=documents)
-    vector_db = perform_embeddings.process_and_load_vectordb()
+    vector_db = perform_embeddings.generate_vectordb()
 
 
 if __name__ == "__main__":
