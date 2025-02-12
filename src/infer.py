@@ -2,6 +2,7 @@ import logging
 import os
 
 import hydra
+from dotenv import load_dotenv
 from langchain.chains.llm import LLMChain
 from langchain_core.prompts.prompt import PromptTemplate
 from langchain_openai.chat_models import ChatOpenAI
@@ -35,6 +36,12 @@ def main(cfg):
         },
     )
 
-    llm = ChatOpenAI(model="gpt-4", temperature=0.7, api_key=api_key)
+    load_dotenv()
+
+    llm = ChatOpenAI(
+        model="gpt-4",
+        temperature=0.7,
+        api_key=os.getenv("api_key"),
+    )
 
     llm_chain = LLMChain(prompt=prompt, llm=llm)
