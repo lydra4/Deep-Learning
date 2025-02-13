@@ -4,6 +4,7 @@ import os
 import hydra
 import torch
 from dotenv import load_dotenv
+from langchain.chains.retrieval import create_retrieval_chain
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_core.prompts.prompt import PromptTemplate
@@ -51,8 +52,7 @@ def main(cfg):
     logger.info("Successfully loaded")
 
     template = """
-    If you do not know, do not make up an answer, mention that you do not know.
-    Answer in the same language as the question.
+    If you do not know, do not make up an answer, mention that you do not know. Please answer in English.
 
     {context_clause}
 
@@ -70,18 +70,22 @@ def main(cfg):
     load_dotenv()
 
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.7,
+        model=cfg["model"],
+        temperature=cfg["temperature"],
         api_key=os.getenv("api_key"),
     )
 
-    llm_chain = prompt | llm
+    retriever = vectordb.as_retriever(
+        search_kwargs={"k": cfg["k"], "search_type": cfg["search_type"]}
+    )
 
-    test_question = "Does Robb Stark die?"
+    qa_chain = create_retrieval_chain(llm=llm, retriever=retriever)
 
-    response = llm_chain.invoke({"question": test_question, "context": ""})
+    question = cfg["question"].strip()
 
-    logger.info(f"Response: {response}")
+    response = qa_chain.invoke({"query": question})
+
+    logger.info(response["answer"])
 
 
 if __name__ == "__main__":
