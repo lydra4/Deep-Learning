@@ -32,7 +32,7 @@ class EPUBProcessor(BaseLoader):
             logger (logging.Logger, optional): Logger instance for logging messages. Defaults to None.
         """
         self.cfg = cfg
-        self.logger = logger
+        self.logger = logger or logging.getLogger(__name__)
 
     def _preprocess_text(self, text: str) -> str:
         """Cleans and preprocesses the extracted text.
@@ -117,7 +117,7 @@ class EPUBProcessor(BaseLoader):
                 extracted_documents.append(
                     Document(page_content=cleaned_text, metadata={"source": book_name})
                 )
-                self.logger.info(f"Successfully processed {book_name}!\n")
+                self.logger.info("Successfull!\n")
 
             except Exception as e:
                 self.logger.error(f"Error Processing {book_name}: {e}", exc_info=True)
