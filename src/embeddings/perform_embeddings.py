@@ -122,7 +122,6 @@ class PerformEmbeddings:
         Returns:
             FAISS: The loaded FAISS vector store.
         """
-        if self.logger:
-            self.logger.info("Starting document processing and generating embeddings")
+        self.logger.info("Starting document processing and generating embeddings")
         self._split_text()
         self._embed_documents()
