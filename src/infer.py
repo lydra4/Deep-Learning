@@ -70,14 +70,18 @@ def main(cfg):
     load_dotenv()
 
     llm = ChatOpenAI(
-        model="gpt-4",
+        model="gpt-4o-mini",
         temperature=0.7,
         api_key=os.getenv("api_key"),
     )
 
     llm_chain = prompt | llm
 
-    response = llm_chain.invoke
+    test_question = "Does Robb Stark die?"
+
+    response = llm_chain.invoke({"question": test_question, "context": ""})
+
+    logger.info(f"Response: {response}")
 
 
 if __name__ == "__main__":
