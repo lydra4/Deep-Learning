@@ -19,6 +19,18 @@ def main(cfg):
         )
     )
 
+    if not os.path.exists(cfg["embeddings_path"]):
+        raise FileNotFoundError(f"The path, {cfg['embeddings_path']}, does not exits.")
+
+    logger.info("Loading Vector DB")
+
+    folder_path = os.path.dirname(cfg["embeddings_path"])
+    index_name = os.path.basename(cfg["embeddings_path"])
+
+    # vectordb = FAISS.load_local(folder_path=folder_path, index_name=index_name)
+
+    logger.info("Successfully loaded")
+
     template = """
     If you do not know, do not make up an answer, mention that you do not know.
     Answer in the same language as the question.
@@ -45,3 +57,7 @@ def main(cfg):
     )
 
     llm_chain = LLMChain(prompt=prompt, llm=llm)
+
+
+if __name__ == "__main__":
+    main()
