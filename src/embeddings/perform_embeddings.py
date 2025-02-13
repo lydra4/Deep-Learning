@@ -27,11 +27,12 @@ class PerformEmbeddings:
             logger (Optional[logging.Logger]): Logger instance for logging messages.
         """
         self.cfg = cfg
-        self.logger = logger
+        self.logger = logger or logging.getLogger(__name__)
         self.documents = documents
         self.texts: List[Document] = []
-        self.embeddings: Optional[HuggingFaceInstructEmbeddings] = None
+        self.embedding_model: Optional[HuggingFaceInstructEmbeddings] = None
         self.embeddings_path: Optional[str] = None
+        self.embeddings_model_name: Optional[str] = None
 
     def _split_text(self) -> List[Document]:
         """Splits documents into smaller chunks based on configuration.
@@ -43,8 +44,8 @@ class PerformEmbeddings:
             **self.cfg["embeddings"]["text_splitter"],
         )
         self.texts = text_splitter.split_documents(self.documents)
-        if self.logger:
-            self.logger.info(f"Text split into {len(self.texts)} parts.")
+        self.logger.info(f"Text split into {len(self.texts)} parts.")
+
         return self.texts
 
     def _load_embeddings_model(self, device: str) -> HuggingFaceInstructEmbeddings:
@@ -57,14 +58,16 @@ class PerformEmbeddings:
             HuggingFaceInstructEmbeddings: The loaded embeddings model.
         """
         model_config = {
-            **self.cfg["embeddings"]["load_embeddings"],
+            "model_name": self.cfg["embeddings"]["embeddings_model"]["model_name"],
+            "show_progress": self.cfg["embeddings"]["embeddings_model"][
+                "show_progress"
+            ],
             "model_kwargs": {"device": device},
         }
-        embeddings_model = HuggingFaceInstructEmbeddings(**model_config)
-        if self.logger:
-            self.logger.info(f"Embedding Model loaded to {device.upper()}")
+        self.embedding_model = HuggingFaceInstructEmbeddings(**model_config)
+        self.logger.info(f"Embedding Model loaded to {device.upper()}")
 
-        return embeddings_model
+        return self.embedding_model
 
     def _embed_documents(self) -> FAISS:
         """Splits, embeds documents, and saves the vector store to disk.
@@ -76,14 +79,13 @@ class PerformEmbeddings:
             self._split_text()
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        if self.logger:
-            self.logger.info(f"Embedding will be loaded to {device}")
-        self.embeddings_model = self._load_embeddings_model(device=device)
+        self.logger.info(f"Embedding model will be loaded to {device}")
+        self.embedding_model = self._load_embeddings_model(device=device)
 
-        embeddings_model_name = re.sub(
+        self.embeddings_model_name = re.sub(
             r'[<>:"/\\|?*]',
             "_",
-            self.cfg["embeddings"]["load_embeddings"]["model_name"].split("/")[-1],
+            self.cfg["embeddings"]["embeddings_model"]["model_name"].split("/")[-1],
         )
         index_name = re.sub(
             r'[<>:"/\\|?*]',
@@ -93,35 +95,26 @@ class PerformEmbeddings:
 
         self.embeddings_path = os.path.join(
             self.cfg["embeddings"]["embed_documents"]["embeddings_path"],
-            embeddings_model_name,
+            self.embeddings_model_name,
             index_name,
         )
-        if not os.path.exists(self.embeddings_path):
-            os.makedirs(self.embeddings_path, exist_ok=True)
-            if self.logger:
-                self.logger.info(f"Created folder at {self.embeddings_path}")
-        else:
-            if self.logger:
-                self.logger.info(f"Folder already exits at {self.embeddings_path}")
+        os.makedirs(self.embeddings_path, exist_ok=True)
+        self.logger.info(f"Embeddings will be saved @ {self.embeddings_path}.")
 
-        if self.logger:
-            self.logger.info("Generating Vector Embeddings")
+        self.logger.info("Generating Vector Embeddings")
 
         vectordb = FAISS.from_documents(
-            documents=self.texts, embedding=self.embeddings_model
+            documents=self.texts, embedding=self.embedding_model
         )
 
-        if self.logger:
-            self.logger.info("Saving Vector Embeddings")
+        self.logger.info("Saving Vector Embeddings")
 
         vectordb.save_local(
             folder_path=self.embeddings_path,
             index_name=self.cfg["embeddings"]["embed_documents"]["index_name"],
         )
 
-        if self.logger:
-            self.logger.info("Successfully saved.")
-        return vectordb
+        self.logger.info("Successfully saved.")
 
     def generate_vectordb(self) -> FAISS:
         """Processes documents, generates embeddings, and loads FAISS vector DB.
