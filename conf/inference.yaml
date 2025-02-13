@@ -1,0 +1,1 @@
+embeddings_path: "./data/embeddings/all-MiniLM-L6-v2/faiss_index_got"
