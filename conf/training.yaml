@@ -2,5 +2,3 @@ defaults:
   - _self_
   - preprocessing: default
   - embeddings: default
-
-input_books: "../data"
