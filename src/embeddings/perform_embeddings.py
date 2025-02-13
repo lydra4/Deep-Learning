@@ -47,7 +47,7 @@ class PerformEmbeddings:
             self.logger.info(f"Text split into {len(self.texts)} parts.")
         return self.texts
 
-    def _load_embeddings(self, device: str) -> HuggingFaceInstructEmbeddings:
+    def _load_embeddings_model(self, device: str) -> HuggingFaceInstructEmbeddings:
         """Loads the HuggingFace embedding model on the specified device.
 
         Args:
@@ -60,11 +60,11 @@ class PerformEmbeddings:
             **self.cfg["embeddings"]["load_embeddings"],
             "model_kwargs": {"device": device},
         }
-        embeddings = HuggingFaceInstructEmbeddings(**model_config)
+        embeddings_model = HuggingFaceInstructEmbeddings(**model_config)
         if self.logger:
             self.logger.info(f"Embedding Model loaded to {device.upper()}")
 
-        return embeddings
+        return embeddings_model
 
     def _embed_documents(self) -> FAISS:
         """Splits, embeds documents, and saves the vector store to disk.
@@ -78,7 +78,7 @@ class PerformEmbeddings:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         if self.logger:
             self.logger.info(f"Embedding will be loaded to {device}")
-        self.embeddings = self._load_embeddings(device=device)
+        self.embeddings_model = self._load_embeddings_model(device=device)
 
         embeddings_model_name = re.sub(
             r'[<>:"/\\|?*]',
@@ -107,7 +107,9 @@ class PerformEmbeddings:
         if self.logger:
             self.logger.info("Generating Vector Embeddings")
 
-        vectordb = FAISS.from_documents(documents=self.texts, embedding=self.embeddings)
+        vectordb = FAISS.from_documents(
+            documents=self.texts, embedding=self.embeddings_model
+        )
 
         if self.logger:
             self.logger.info("Saving Vector Embeddings")
