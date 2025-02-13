@@ -2,8 +2,11 @@ text_splitter:
   chunk_size: 2_560_000
   chunk_overlap: 25_800
 
-load_embeddings:
+embeddings_model:
   model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  show_progress: True
+  save_path: "./data/embeddings_model/"
+
 
 embed_documents:
   embeddings_path: "./data/embeddings/"
