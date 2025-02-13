@@ -1,3 +1,10 @@
 embeddings_path: "./data/embeddings/all-MiniLM-L6-v2/faiss_index_got"
 embeddings_model_name: "sentence-transformers/all-MiniLM-L6-v2"
 show_progress: True
+
+model: "gpt-4o"
+temperature: 0.7
+question: "Does Robb Stark die?"
+
+k: 1
+search_type: "similarity"
