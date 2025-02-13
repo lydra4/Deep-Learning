@@ -2,8 +2,10 @@ import logging
 import os
 
 import hydra
+import torch
 from dotenv import load_dotenv
-from langchain.chains.llm import LLMChain
+from langchain_community.embeddings import HuggingFaceInstructEmbeddings
+from langchain_community.vectorstores.faiss import FAISS
 from langchain_core.prompts.prompt import PromptTemplate
 from langchain_openai.chat_models import ChatOpenAI
 from utils.general_utils import setup_logging
@@ -24,10 +26,27 @@ def main(cfg):
 
     logger.info("Loading Vector DB")
 
-    folder_path = os.path.dirname(cfg["embeddings_path"])
     index_name = os.path.basename(cfg["embeddings_path"])
 
-    # vectordb = FAISS.load_local(folder_path=folder_path, index_name=index_name)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    logger.info(f"Embedding Model will be loaded to {device.upper()}.")
+
+    model_config = {
+        "model_name": cfg["embeddings_model_name"],
+        "show_progress": cfg["show_progress"],
+        "model_kwargs": {"device": device},
+    }
+
+    embedding_model = HuggingFaceInstructEmbeddings(**model_config)
+
+    logger.info(f"Embedding Model loaded to {device.upper()}.")
+
+    vectordb = FAISS.load_local(
+        folder_path=cfg["embeddings_path"],
+        embeddings=embedding_model,
+        index_name=index_name,
+        allow_dangerous_deserialization=True,
+    )
 
     logger.info("Successfully loaded")
 
@@ -56,7 +75,9 @@ def main(cfg):
         api_key=os.getenv("api_key"),
     )
 
-    llm_chain = LLMChain(prompt=prompt, llm=llm)
+    llm_chain = prompt | llm
+
+    response = llm_chain.invoke
 
 
 if __name__ == "__main__":
