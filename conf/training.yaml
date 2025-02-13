@@ -3,5 +3,4 @@ defaults:
   - preprocessing: default
   - embeddings: default
 
-stage: "training"
 input_books: "../data"
