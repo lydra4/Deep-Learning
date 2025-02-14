@@ -4,7 +4,7 @@ import os
 import hydra
 import torch
 from dotenv import load_dotenv
-from langchain.chains.retrieval import create_retrieval_chain
+from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_core.prompts.prompt import PromptTemplate
@@ -52,19 +52,17 @@ def main(cfg):
     logger.info("Successfully loaded")
 
     template = """
-    If you do not know, do not make up an answer, mention that you do not know. Please answer in English.
+    If you do not know, do not make up an answer, mention that you do not know. 
+    Please answer in English.
 
-    {context_clause}
+    {context}
 
     Question: {question}
     Answer:"""
 
     prompt = PromptTemplate(
         template=template,
-        input_variables=["question"],
-        partial_variables={
-            "context_clause": "Use the follow context to answer:\n{context}"
-        },
+        input_variables=["context", "question"],
     )
 
     load_dotenv()
@@ -79,13 +77,24 @@ def main(cfg):
         search_kwargs={"k": cfg["k"], "search_type": cfg["search_type"]}
     )
 
-    qa_chain = create_retrieval_chain(llm=llm, retriever=retriever)
+    qa_chain = RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type=cfg["chain_type"],
+        retriever=retriever,
+        chain_type_kwargs={"prompt": prompt},
+        return_source_documents=cfg["return_source_documents"],
+        verbose=cfg["verbose"],
+    )
 
     question = cfg["question"].strip()
+    retrieved_docs = retriever.invoke(question)
+    print(retrieved_docs)
+    context_text = "\n".join(doc.page_content for doc in retrieved_docs)
+    # print(len(context_text), type(context_text))
 
-    response = qa_chain.invoke({"query": question})
-
-    logger.info(response["answer"])
+    llm_response = qa_chain.invoke({"query": question, "context": retrieved_docs})
+    answer = llm_response["result"]
+    logger.info(f"Question: {question}\n Answer: {answer}")
 
 
 if __name__ == "__main__":
