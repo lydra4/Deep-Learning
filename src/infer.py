@@ -2,6 +2,7 @@ import logging
 import os
 
 import hydra
+import openai
 import torch
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
@@ -88,13 +89,17 @@ def main(cfg):
 
     question = cfg["question"].strip()
     retrieved_docs = retriever.invoke(question)
-    print(retrieved_docs)
-    context_text = "\n".join(doc.page_content for doc in retrieved_docs)
-    # print(len(context_text), type(context_text))
+
+    openai.api_key = os.getenv("api_key")
+    # max_tokens = openai.Model.retrieve(model=cfg["model"])["max_tokens"]
+
+    for document in retrieved_docs:
+        document.page_content = document.page_content[:30_000]
 
     llm_response = qa_chain.invoke({"query": question, "context": retrieved_docs})
-    answer = llm_response["result"]
-    logger.info(f"Question: {question}\n Answer: {answer}")
+
+    print(llm_response.keys())
+    print(llm_response["result"])
 
 
 if __name__ == "__main__":
