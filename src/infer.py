@@ -98,8 +98,8 @@ def main(cfg):
 
     llm_response = qa_chain.invoke({"query": question, "context": retrieved_docs})
 
-    print(llm_response.keys())
-    print(llm_response["result"])
+    print(f"Question: {question}")
+    print(f"Answer: {llm_response['result']}")
 
 
 if __name__ == "__main__":
