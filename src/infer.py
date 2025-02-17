@@ -52,6 +52,10 @@ def main(cfg):
 
     logger.info("Successfully loaded")
 
+    if torch.cuda.is_available():
+        vectordb.index = vectordb.index.to_gpu()
+        logger.info("Vector Database moved to GPU.")
+
     template = """
     If you do not know, do not make up an answer, mention that you do not know. 
     Please answer in English.
@@ -98,8 +102,8 @@ def main(cfg):
 
     llm_response = qa_chain.invoke({"query": question, "context": retrieved_docs})
 
-    print(f"Question: {question}")
-    print(f"Answer: {llm_response['result']}")
+    print(f"\nQuestion: {question}")
+    print(f"\nAnswer: {llm_response['result']}\n")
 
 
 if __name__ == "__main__":
