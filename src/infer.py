@@ -91,6 +91,8 @@ def main(cfg):
         verbose=cfg["verbose"],
     )
 
+    max_input_tokens = 30_000
+
     with open(file=cfg["path_to_qns"], mode="r", encoding=locale.getencoding()) as f:
         qns_list = f.readlines()
         qns_list = [line.rstrip("\n").strip() for line in qns_list]
@@ -110,7 +112,7 @@ def main(cfg):
             retrieved_docs = retriever.invoke(question)
 
             for document in retrieved_docs:
-                document.page_content = document.page_content[:30_000]
+                document.page_content = document.page_content[:max_input_tokens]
 
             llm_response = qa_chain.invoke(
                 {"query": question, "context": retrieved_docs}
