@@ -1,8 +1,8 @@
+import locale
 import logging
 import os
 
 import hydra
-import openai
 import torch
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
@@ -91,19 +91,23 @@ def main(cfg):
         verbose=cfg["verbose"],
     )
 
-    question = cfg["question"].strip()
-    retrieved_docs = retriever.invoke(question)
+    with open(file=cfg["path_to_qns"], mode="r", encoding=locale.getencoding()) as f:
+        qns_list = f.readlines()
+        qns_list = [line.rstrip("\n") for line in qns_list]
+        f.close()
 
-    openai.api_key = os.getenv("api_key")
-    # max_tokens = openai.Model.retrieve(model=cfg["model"])["max_tokens"]
+    logger.info(f"Total number of questions: {len(qns_list)}.\n")
 
-    for document in retrieved_docs:
-        document.page_content = document.page_content[:30_000]
+    for question in qns_list:
+        retrieved_docs = retriever.invoke(question)
 
-    llm_response = qa_chain.invoke({"query": question, "context": retrieved_docs})
+        for document in retrieved_docs:
+            document.page_content = document.page_content[:30_000]
 
-    print(f"\nQuestion: {question}")
-    print(f"\nAnswer: {llm_response['result']}\n")
+        llm_response = qa_chain.invoke({"query": question, "context": retrieved_docs})
+
+        logger.info(f"\nQuestion: {question}")
+        logger.info(f"\nAnswer: {llm_response['result']}\n")
 
 
 if __name__ == "__main__":
