@@ -98,16 +98,28 @@ def main(cfg):
 
     logger.info(f"Total number of questions: {len(qns_list)}.\n")
 
-    for question in qns_list:
-        retrieved_docs = retriever.invoke(question)
+    folder_to_ans = os.path.dirname(cfg["path_to_ans"])
+    os.makedirs(name=folder_to_ans, exist_ok=True)
 
-        for document in retrieved_docs:
-            document.page_content = document.page_content[:30_000]
+    with open(
+        file=cfg["path_to_ans"], mode="w", encoding=locale.getencoding()
+    ) as ans_file:
+        logger.info(f"Answers will be saved in {cfg['path_to_ans']}.\n")
 
-        llm_response = qa_chain.invoke({"query": question, "context": retrieved_docs})
+        for question in qns_list:
+            retrieved_docs = retriever.invoke(question)
 
-        logger.info(f"\nQuestion: {question}")
-        logger.info(f"\nAnswer: {llm_response['result']}\n")
+            for document in retrieved_docs:
+                document.page_content = document.page_content[:30_000]
+
+            llm_response = qa_chain.invoke(
+                {"query": question, "context": retrieved_docs}
+            )
+
+            logger.info(f"\nQuestion: {question}")
+            logger.info(f"\nAnswer: {llm_response['result']}\n")
+
+            ans_file.write(f"{question} - {llm_response['result']}.\n")
 
 
 if __name__ == "__main__":
