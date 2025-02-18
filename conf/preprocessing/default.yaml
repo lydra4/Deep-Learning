@@ -1,3 +1,3 @@
-path: "./data/"
+path: "./data/datasets/"
 file_extension: ".epub"
 nltk: ["stopwords", "punkt_tab", "wordnet"]
