@@ -93,7 +93,7 @@ def main(cfg):
 
     with open(file=cfg["path_to_qns"], mode="r", encoding=locale.getencoding()) as f:
         qns_list = f.readlines()
-        qns_list = [line.rstrip("\n") for line in qns_list]
+        qns_list = [line.rstrip("\n").strip() for line in qns_list]
         f.close()
 
     logger.info(f"Total number of questions: {len(qns_list)}.\n")
