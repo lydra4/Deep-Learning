@@ -10,6 +10,7 @@ from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_core.prompts.prompt import PromptTemplate
 from langchain_openai.chat_models import ChatOpenAI
+
 from utils.general_utils import setup_logging
 
 
