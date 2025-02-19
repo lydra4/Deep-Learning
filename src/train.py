@@ -2,7 +2,6 @@ import logging
 import os
 
 import hydra
-
 from embeddings.perform_embeddings import PerformEmbeddings
 from utils.general_utils import setup_logging
 from utils.process_data import EPUBProcessor
