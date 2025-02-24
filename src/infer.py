@@ -10,7 +10,6 @@ from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_core.prompts.prompt import PromptTemplate
 from langchain_openai.chat_models import ChatOpenAI
-
 from utils.general_utils import setup_logging
 
 
@@ -53,18 +52,10 @@ def main(cfg):
 
     logger.info("Successfully loaded")
 
-    if torch.cuda.is_available():
-        vectordb.index = vectordb.index.to_gpu()
-        logger.info("Vector Database moved to GPU.")
-
-    template = """
-    If you do not know, do not make up an answer, mention that you do not know. 
-    Please answer in English.
-
-    {context}
-
-    Question: {question}
-    Answer:"""
+    with open(
+        file=cfg["path_to_template"], mode="r", encoding=locale.getencoding()
+    ) as f:
+        template = f.read()
 
     prompt = PromptTemplate(
         template=template,
@@ -92,7 +83,7 @@ def main(cfg):
         verbose=cfg["verbose"],
     )
 
-    max_input_tokens = 30_000
+    max_input_tokens = cfg["max_tokens"]
 
     with open(file=cfg["path_to_qns"], mode="r", encoding=locale.getencoding()) as f:
         qns_list = f.readlines()
