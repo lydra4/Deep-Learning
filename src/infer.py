@@ -112,6 +112,8 @@ def main(cfg):
 
             logger.info(f"\nQuestion: {question}")
             logger.info(f"\nAnswer: {llm_response['result']}\n")
+            for document in llm_response["context"]:
+                logger.info(f"\nContext: {document.page_content}\n")
 
             ans_file.write(f"{question} - {llm_response['result']}.\n")
 
