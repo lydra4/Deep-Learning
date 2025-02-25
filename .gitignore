@@ -8,7 +8,7 @@ conf/**/*credentials*
 # Ignore everything in the following folders
 logs/**
 models/**
-data/**
+data/embeddings/**
 
 # Except their sub-folders
 !data/**/
@@ -160,6 +160,9 @@ venv.bak/
 # animations
 *.mp4
 *.npy
+
+# books
+*.epub
 
 # Training commands
 commands/
