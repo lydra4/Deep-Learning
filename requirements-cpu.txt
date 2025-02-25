@@ -19,8 +19,7 @@ rich == 13.9.4
 ruff==0.9.6
 sentence-transformers==2.2.2
 tika==2.6.0
+torch==2.6.0
+torchvision==0.21.0
+torchaudio==2.6.0
 wordcloud==1.9.4
-
-torch
-torchvision
-torchaudio
