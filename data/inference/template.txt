@@ -1,0 +1,7 @@
+If you do not know, do not make up an answer, mention that you do not know. 
+Please answer in English.
+
+{context}
+
+Question: {question}
+Answer:
