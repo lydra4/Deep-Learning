@@ -4,6 +4,7 @@ import re
 from typing import List, Optional
 
 import nltk
+import omegaconf
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
 from nltk.corpus import stopwords
@@ -24,7 +25,9 @@ class EPUBProcessor(BaseLoader):
         logger (logging.Logger, optional): Logger instance for logging messages.
     """
 
-    def __init__(self, cfg: dict, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(
+        self, cfg: omegaconf.dictconfig, logger: Optional[logging.Logger] = None
+    ) -> None:
         """Initializes the EPUBProcessor.
 
         Args:

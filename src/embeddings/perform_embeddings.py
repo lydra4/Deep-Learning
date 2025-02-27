@@ -3,6 +3,7 @@ import os
 import re
 from typing import List, Optional
 
+import omegaconf
 import torch
 from langchain.docstore.document import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -15,7 +16,7 @@ class PerformEmbeddings:
 
     def __init__(
         self,
-        cfg: dict,
+        cfg: omegaconf.DictConfig,
         documents: List[Document],
         logger: Optional[logging.Logger] = None,
     ) -> None:
