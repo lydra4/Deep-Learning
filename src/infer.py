@@ -10,7 +10,6 @@ from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_core.prompts.prompt import PromptTemplate
 from langchain_openai.chat_models import ChatOpenAI
-
 from utils.general_utils import setup_logging
 
 
@@ -113,7 +112,9 @@ def main(cfg):
 
             logger.info(f"\nQuestion: {question}")
             logger.info(f"\nAnswer: {llm_response['result']}\n")
-            logger.info(f"\nContext: {llm_response['context'][0]}\n")
+            logger.info(
+                f"\nContext: {' '.join([doc.page_content for doc in retrieved_docs])}\n"
+            )
 
             ans_file.write(f"{question} - {llm_response['result']}.\n")
 
