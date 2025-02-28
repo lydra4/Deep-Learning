@@ -100,6 +100,8 @@ def main(cfg):
     ) as ans_file:
         logger.info(f"Answers will be saved in {cfg['path_to_ans']}.\n")
 
+        data_list = []
+
         for question in qns_list:
             retrieved_docs = retriever.invoke(question)
 
@@ -115,6 +117,14 @@ def main(cfg):
             logger.info(
                 f"\nContext: {' '.join([doc.page_content for doc in retrieved_docs])}\n"
             )
+
+            data_dict = {
+                "question": question,
+                "contexts": [" ".join([doc.page_content for doc in retrieved_docs])],
+                "answer": llm_response["result"],
+            }
+
+            data_list.append(data_dict)
 
             ans_file.write(f"{question} - {llm_response['result']}.\n")
 
