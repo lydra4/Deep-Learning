@@ -6,6 +6,7 @@ from typing import Optional
 import omegaconf
 import torch
 from dotenv import load_dotenv
+from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.prompts.prompt import PromptTemplate
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
@@ -22,6 +23,10 @@ class InferencePipeline:
         self.vectordb: Optional[FAISS] = None
         self.prompt: Optional[PromptTemplate] = None
         self.llm: Optional[ChatOpenAI] = None
+        self.retriever = None
+        self.qa_chain = None
+        self.qns_list: Optional[list] = None
+        self.answer_file: Optional[str] = None
 
     def _load_embedding_model(self):
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -42,7 +47,6 @@ class InferencePipeline:
                 f"The path, {self.cfg.embeddings.embeddings_path}, does not exits"
             )
 
-        self._load_embedding_model()
         index_name = os.path.basename(self.cfg.embeddings.embeddings_path)
         self.logger.info("Loading Vector database")
 
@@ -68,8 +72,49 @@ class InferencePipeline:
 
     def _intialize_llm(self):
         load_dotenv(dotenv_path="../.env")
+        self.logger.info("Initializing LLM")
         self.llm = ChatOpenAI(
             model=self.cfg.llm.model,
             temperature=self.cfg.llm.temperature,
             api_key=os.getenv("api_key"),
         )
+        self.logger.info(
+            f"LLM successfully initialized with model: {self.cfg.llm.model}"
+        )
+
+    def _create_retriever(self):
+        self.retriever = self.vectordb.as_retriever(
+            search_kwargs={
+                "k": self.cfg.retrieve.k,
+                "search_type": self.cfg.retrieve.search_type,
+            }
+        )
+
+    def _create_qa_chain(self):
+        self.qa_chain = RetrievalQA.from_chain_type(
+            llm=self.llm,
+            chain_type=self.cfg.retrieval.chain_type,
+            retriever=self.retriever,
+            chain_type_kwargs={"prompt": self.prompt},
+            return_source_documents=self.cfg.retrieval.return_source_documents,
+            verbose=self.cfg.retrieval.verbose,
+        )
+
+    def _open_questions(self):
+        with open(
+            file=self.cfg.llm.path_to_qns, mode="r", encoding=locale.getencoding()
+        ) as f:
+            self.qns_list = f.readlines()
+            self.qns_list = [line.rstrip("\n").strip() for line in self.qns_list]
+            f.close()
+
+        self.logger.info(f"Total number of question: {len(self.qns_list)}")
+
+    def _create_answers(self):
+        folder_to_answers = os.path.dirname(self.cfg.llm.path_to_ans)
+        os.makedirs(name=folder_to_answers, exist_ok=True)
+
+        with open(
+            file=self.cfg.llm.path_to_ans, mode="w", encoding=locale.getencoding()
+        ) as self.answer_file:
+            self.logger.info(f"Answers will be saved at {self.cfg.path_to_ans} \n")
