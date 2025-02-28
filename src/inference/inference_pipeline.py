@@ -32,19 +32,17 @@ class InferencePipeline:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.logger.info(f"Loading embedding model on {device.upper()}\n")
 
-        self.logger.info("Loading embedding model")
-        model_config = {
-            "model_name": self.cfg.embeddings.embeddings_model_name,
-            "show_progress": self.cfg.embeddings.show_progress,
-            "model_kwargs": {"device": device},
-        }
-        self.embedding_model = HuggingFaceInstructEmbeddings(**model_config)
+        self.embedding_model = HuggingFaceInstructEmbeddings(
+            model_name=self.cfg.embeddings.embeddings_model_name,
+            show_progress=self.cfg.embeddings.show_progress,
+            model_kwargs={"device": device},
+        )
         self.logger.info("Embedding model loaded successfully.")
 
     def _load_vectordb(self):
         if not os.path.exists(self.cfg.embeddings.embeddings_path):
             raise FileNotFoundError(
-                f"The path, {self.cfg.embeddings.embeddings_path}, does not exits"
+                f"Vector database path does not exist: {self.cfg.embeddings.embeddings_path}"
             )
 
         index_name = os.path.basename(self.cfg.embeddings.embeddings_path)
@@ -57,7 +55,7 @@ class InferencePipeline:
             allow_dangerous_deserialization=True,
         )
 
-        self.logger.info("Successfully Loaded")
+        self.logger.info("Vector database loaded successfully.")
 
     def _prompt_template(self):
         self.logger.info("Loading Prompt Template")
@@ -65,14 +63,14 @@ class InferencePipeline:
             file=self.cfg.path_to_template, mode="r", encoding=locale.getencoding()
         ) as f:
             template = f.read()
-            f.close()
 
         self.prompt = PromptTemplate(
             template=template, input_variables=["context", "question"]
         )
+        self.logger.info("Prompt template loaded successfully.")
 
     def _intialize_llm(self):
-        load_dotenv(dotenv_path="../.env")
+        load_dotenv()
         api_key = os.getenv("api_key")
         if not api_key:
             raise ValueError("API key not found in environment variables.")
@@ -107,16 +105,15 @@ class InferencePipeline:
 
     def _open_questions(self):
         self.logger.info("Loading questions...")
+
         with open(
             file=self.cfg.llm.path_to_qns, mode="r", encoding=locale.getencoding()
         ) as f:
-            self.qns_list = f.readlines()
-            self.qns_list = [line.rstrip("\n").strip() for line in self.qns_list]
-            f.close()
+            self.qns_list = [line.rstrip("\n").strip() for line in f.readlines()]
 
         self.logger.info(f"Loaded {len(self.qns_list)} questions.")
 
-    def _create_answers(self):
+    def _infer(self):
         folder_to_answers = os.path.dirname(self.cfg.llm.path_to_ans)
         os.makedirs(name=folder_to_answers, exist_ok=True)
 
@@ -125,4 +122,43 @@ class InferencePipeline:
         with open(
             file=self.cfg.llm.path_to_ans, mode="w", encoding=locale.getencoding()
         ) as self.answer_file:
-            pass
+            data_list = []
+
+            for question in self.qns_list:
+                retrieved_docs = self.retriever.invoke(input=question)
+
+                for document in retrieved_docs:
+                    document.page_content = document.page_content[
+                        : self.cfg.retrieval.max_tokens
+                    ]
+
+                llm_response = self.qa_chain.invoke(
+                    {"query": question, "context": retrieved_docs}
+                )
+
+                self.logger.info(f"\nQuestion: {question}")
+                self.logger.info(f"\nAnswer: {llm_response['result']}\n")
+
+                data_list.append(
+                    {
+                        "question": question,
+                        "contexts": [
+                            " ".join([doc.page_content for doc in retrieved_docs])
+                        ],
+                        "answer": llm_response["result"],
+                    }
+                )
+
+                # need to return data_list later for evaluation
+
+                self.answer_file.write(f"{question} - {llm_response['result']}.\n")
+
+    def run_inference(self):
+        self._load_embedding_model()
+        self._load_vectordb()
+        self._prompt_template()
+        self._intialize_llm()
+        self._create_retriever()
+        self._create_qa_chain()
+        self._open_questions()
+        self._infer()
