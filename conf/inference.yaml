@@ -9,10 +9,11 @@ retrieve:
   k: 1
   search_type: "similarity"
 
-model: "gpt-4o"
-temperature: 0.7
-path_to_qns: "./data/inference/questions.txt"
-path_to_ans: "./data/answers/answers.txt"
+llm:
+  model: "gpt-4o"
+  temperature: 0.7
+  path_to_qns: "./data/inference/questions.txt"
+  path_to_ans: "./data/answers/answers.txt"
 
 max_tokens: 30_000
 
