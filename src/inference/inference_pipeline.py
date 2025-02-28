@@ -30,7 +30,7 @@ class InferencePipeline:
 
     def _load_embedding_model(self):
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.logger.info(f"Embedding Model will be loaded to {device.upper()}\n")
+        self.logger.info(f"Loading embedding model on {device.upper()}\n")
 
         self.logger.info("Loading embedding model")
         model_config = {
@@ -39,7 +39,7 @@ class InferencePipeline:
             "model_kwargs": {"device": device},
         }
         self.embedding_model = HuggingFaceInstructEmbeddings(**model_config)
-        self.logger.info(f"Embedding Model loaded to {device.upper()}\n")
+        self.logger.info("Embedding model loaded successfully.")
 
     def _load_vectordb(self):
         if not os.path.exists(self.cfg.embeddings.embeddings_path):
@@ -65,6 +65,7 @@ class InferencePipeline:
             file=self.cfg.path_to_template, mode="r", encoding=locale.getencoding()
         ) as f:
             template = f.read()
+            f.close()
 
         self.prompt = PromptTemplate(
             template=template, input_variables=["context", "question"]
@@ -72,11 +73,15 @@ class InferencePipeline:
 
     def _intialize_llm(self):
         load_dotenv(dotenv_path="../.env")
+        api_key = os.getenv("api_key")
+        if not api_key:
+            raise ValueError("API key not found in environment variables.")
+
         self.logger.info("Initializing LLM")
         self.llm = ChatOpenAI(
             model=self.cfg.llm.model,
             temperature=self.cfg.llm.temperature,
-            api_key=os.getenv("api_key"),
+            api_key=api_key,
         )
         self.logger.info(
             f"LLM successfully initialized with model: {self.cfg.llm.model}"
@@ -101,6 +106,7 @@ class InferencePipeline:
         )
 
     def _open_questions(self):
+        self.logger.info("Loading questions...")
         with open(
             file=self.cfg.llm.path_to_qns, mode="r", encoding=locale.getencoding()
         ) as f:
@@ -108,13 +114,15 @@ class InferencePipeline:
             self.qns_list = [line.rstrip("\n").strip() for line in self.qns_list]
             f.close()
 
-        self.logger.info(f"Total number of question: {len(self.qns_list)}")
+        self.logger.info(f"Loaded {len(self.qns_list)} questions.")
 
     def _create_answers(self):
         folder_to_answers = os.path.dirname(self.cfg.llm.path_to_ans)
         os.makedirs(name=folder_to_answers, exist_ok=True)
 
+        self.logger.info(f"Saving answers to {self.cfg.llm.path_to_ans}")
+
         with open(
             file=self.cfg.llm.path_to_ans, mode="w", encoding=locale.getencoding()
         ) as self.answer_file:
-            self.logger.info(f"Answers will be saved at {self.cfg.path_to_ans} \n")
+            pass
