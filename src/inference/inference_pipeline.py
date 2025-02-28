@@ -5,9 +5,11 @@ from typing import Optional
 
 import omegaconf
 import torch
+from dotenv import load_dotenv
 from langchain.prompts.prompt import PromptTemplate
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
+from langchain_openai.chat_models import ChatOpenAI
 
 
 class InferencePipeline:
@@ -17,7 +19,9 @@ class InferencePipeline:
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
         self.embedding_model: Optional[HuggingFaceInstructEmbeddings] = None
-        self.template = Optional[str] = None
+        self.vectordb: Optional[FAISS] = None
+        self.prompt: Optional[PromptTemplate] = None
+        self.llm: Optional[ChatOpenAI] = None
 
     def _load_embedding_model(self):
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -56,8 +60,16 @@ class InferencePipeline:
         with open(
             file=self.cfg.path_to_template, mode="r", encoding=locale.getencoding()
         ) as f:
-            self.template = f.read()
+            template = f.read()
 
-        prompt = PromptTemplate(
-            template=self.template, input_variables=["context", "question"]
+        self.prompt = PromptTemplate(
+            template=template, input_variables=["context", "question"]
+        )
+
+    def _intialize_llm(self):
+        load_dotenv(dotenv_path="../.env")
+        self.llm = ChatOpenAI(
+            model=self.cfg.llm.model,
+            temperature=self.cfg.llm.temperature,
+            api_key=os.getenv("api_key"),
         )
