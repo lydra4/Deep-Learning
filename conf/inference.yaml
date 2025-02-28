@@ -15,8 +15,8 @@ llm:
   path_to_qns: "./data/inference/questions.txt"
   path_to_ans: "./data/answers/answers.txt"
 
-max_tokens: 30_000
-
-chain_type: "stuff"
-return_source_documents: True
-verbose: False
+retrieval:
+  chain_type: "stuff"
+  return_source_documents: True
+  verbose: False
+  max_tokens: 30_000
