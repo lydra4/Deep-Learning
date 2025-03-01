@@ -1,4 +1,5 @@
 autoflake == 2.3.1
+datasets == 3.3.2
 faiss-cpu==1.9.0.post1
 gensim==4.3.3
 huggingface_hub==0.24.0
@@ -16,6 +17,7 @@ pyarrow==18.1.0
 pyLDAvis==3.4.1
 pylint==3.3.4
 python-json-logger==3.2.1
+ragas == 0.2.13
 rich == 13.9.4
 ruff==0.9.6
 sentence-transformers==2.2.2
