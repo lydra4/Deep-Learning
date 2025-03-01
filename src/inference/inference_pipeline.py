@@ -34,12 +34,17 @@ class InferencePipeline:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.logger.info(f"Loading embedding model on {device.upper()}\n")
 
-        self.embedding_model = HuggingFaceInstructEmbeddings(
-            model_name=self.cfg.embeddings.embeddings_model_name,
-            show_progress=self.cfg.embeddings.show_progress,
-            model_kwargs={"device": device},
-        )
-        self.logger.info("Embedding model loaded successfully.")
+        try:
+            self.embedding_model = HuggingFaceInstructEmbeddings(
+                model_name=self.cfg.embeddings.embeddings_model_name,
+                show_progress=self.cfg.embeddings.show_progress,
+                model_kwargs={"device": device},
+            )
+            self.logger.info("Embedding model loaded successfully.")
+
+        except Exception as e:
+            self.logger.error(f"Failed to load embedding model: {e}")
+            raise
 
     def _load_vectordb(self):
         if not os.path.exists(self.cfg.embeddings.embeddings_path):
@@ -50,42 +55,57 @@ class InferencePipeline:
         index_name = os.path.basename(self.cfg.embeddings.embeddings_path)
         self.logger.info("Loading Vector database")
 
-        self.vectordb = FAISS.load_local(
-            folder_path=self.cfg.embeddings.embeddings_path,
-            embeddings=self.embedding_model,
-            index_name=index_name,
-            allow_dangerous_deserialization=True,
-        )
+        try:
+            self.vectordb = FAISS.load_local(
+                folder_path=self.cfg.embeddings.embeddings_path,
+                embeddings=self.embedding_model,
+                index_name=index_name,
+                allow_dangerous_deserialization=True,
+            )
+            self.logger.info("Vector database loaded successfully.")
 
-        self.logger.info("Vector database loaded successfully.")
+        except Exception as e:
+            self.logger.error(f"Failed to load vector database: {e}")
+            raise
 
-    def _prompt_template(self):
+    def _load_prompt_template(self):
         self.logger.info("Loading Prompt Template")
-        with open(
-            file=self.cfg.path_to_template, mode="r", encoding=locale.getencoding()
-        ) as f:
-            template = f.read()
 
-        self.prompt = PromptTemplate(
-            template=template, input_variables=["context", "question"]
-        )
-        self.logger.info("Prompt template loaded successfully.")
+        try:
+            with open(
+                file=self.cfg.path_to_template, mode="r", encoding=locale.getencoding()
+            ) as f:
+                template = f.read()
 
-    def _intialize_llm(self):
+            self.prompt = PromptTemplate(
+                template=template, input_variables=["context", "question"]
+            )
+            self.logger.info("Prompt template loaded successfully.")
+
+        except Exception as e:
+            self.logger.error(f"Failed to load Prompt Template: {e}")
+            raise
+
+    def _initialize_llm(self):
         load_dotenv()
         api_key = os.getenv("api_key")
         if not api_key:
             raise ValueError("API key not found in environment variables.")
 
         self.logger.info("Initializing LLM")
-        self.llm = ChatOpenAI(
-            model=self.cfg.llm.model,
-            temperature=self.cfg.llm.temperature,
-            api_key=api_key,
-        )
-        self.logger.info(
-            f"LLM successfully initialized with model: {self.cfg.llm.model}"
-        )
+        try:
+            self.llm = ChatOpenAI(
+                model=self.cfg.llm.model,
+                temperature=self.cfg.llm.temperature,
+                api_key=api_key,
+            )
+            self.logger.info(
+                f"LLM successfully initialized with model: {self.cfg.llm.model}"
+            )
+
+        except Exception as e:
+            self.logger.error(f"Failed to initialize LLM: {e}")
+            raise
 
     def _create_retriever(self):
         self.retriever = self.vectordb.as_retriever(
@@ -108,18 +128,24 @@ class InferencePipeline:
     def _open_questions(self):
         self.logger.info("Loading questions...")
 
-        with open(
-            file=self.cfg.llm.path_to_qns, mode="r", encoding=locale.getencoding()
-        ) as f:
-            self.qns_list = [line.rstrip("\n").strip() for line in f.readlines()]
+        try:
+            with open(
+                file=self.cfg.llm.path_to_qns, mode="r", encoding=locale.getencoding()
+            ) as f:
+                self.qns_list = [line.rstrip("\n").strip() for line in f.readlines()]
 
-        self.logger.info(f"Loaded {len(self.qns_list)} questions.")
+            self.logger.info(f"Loaded {len(self.qns_list)} questions.")
+
+        except Exception as e:
+            self.logger.error(f"Failed to load questions: {e}")
+            raise
 
     def _infer(self):
         folder_to_answers = os.path.dirname(self.cfg.llm.path_to_ans)
         os.makedirs(name=folder_to_answers, exist_ok=True)
 
         self.logger.info(f"Saving answers to {self.cfg.llm.path_to_ans}")
+        data_list = []
 
         with open(
             file=self.cfg.llm.path_to_ans,
@@ -127,8 +153,6 @@ class InferencePipeline:
             encoding=locale.getencoding(),
             newline="\n",
         ) as self.answer_file:
-            data_list = []
-
             for question in self.qns_list:
                 retrieved_docs = self.retriever.invoke(input=question)
 
@@ -159,14 +183,14 @@ class InferencePipeline:
                 self.answer_file.write(f"{question} - {llm_response['result']}.\n")
 
             df = pd.DataFrame(data=data_list)
-            ragas_df = Dataset.from_pandas(df=df)
+        return Dataset.from_pandas(df=df)
 
     def run_inference(self):
         self._load_embedding_model()
         self._load_vectordb()
-        self._prompt_template()
-        self._intialize_llm()
+        self._load_prompt_template()
+        self._initialize_llm()
         self._create_retriever()
         self._create_qa_chain()
         self._open_questions()
-        self._infer()
+        return self._infer()
