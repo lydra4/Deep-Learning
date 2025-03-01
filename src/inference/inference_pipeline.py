@@ -122,7 +122,10 @@ class InferencePipeline:
         self.logger.info(f"Saving answers to {self.cfg.llm.path_to_ans}")
 
         with open(
-            file=self.cfg.llm.path_to_ans, mode="w", encoding=locale.getencoding()
+            file=self.cfg.llm.path_to_ans,
+            mode="w",
+            encoding=locale.getencoding(),
+            newline="\n",
         ) as self.answer_file:
             data_list = []
 
