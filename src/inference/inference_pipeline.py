@@ -4,7 +4,9 @@ import os
 from typing import Optional
 
 import omegaconf
+import pandas as pd
 import torch
+from datasets import Dataset
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.prompts.prompt import PromptTemplate
@@ -152,6 +154,9 @@ class InferencePipeline:
                 # need to return data_list later for evaluation
 
                 self.answer_file.write(f"{question} - {llm_response['result']}.\n")
+
+            df = pd.DataFrame(data=data_list)
+            ragas_df = Dataset.from_pandas(df=df)
 
     def run_inference(self):
         self._load_embedding_model()
