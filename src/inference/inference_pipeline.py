@@ -35,7 +35,7 @@ class InferencePipeline:
         self.retriever = None
         self.qa_chain = None
         self.qns_list: Optional[list] = None
-        self.ans_list: Optional[list] = None
+        self.ground_truth: Optional[list] = None
         self.answer_file: Optional[str] = None
 
     def _load_embedding_model(self):
