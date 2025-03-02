@@ -19,6 +19,13 @@ class InferencePipeline:
     def __init__(
         self, cfg: omegaconf.DictConfig, logger: Optional[logging.Logger] = None
     ) -> None:
+        """
+        Initializes the inference pipeline.
+
+        Args:
+            cfg (omegaconf.DictConfig): Configuration dictionary for the pipeline.
+            logger (Optional[logging.Logger], optional): Logger instance. Defaults to None.
+        """
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
         self.embedding_model: Optional[HuggingFaceInstructEmbeddings] = None
@@ -31,6 +38,12 @@ class InferencePipeline:
         self.answer_file: Optional[str] = None
 
     def _load_embedding_model(self):
+        """
+        Loads the embedding model specified in the configuration.
+
+        Raises:
+            Exception: If the embedding model fails to load.
+        """
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.logger.info(f"Loading embedding model on {device.upper()}\n")
 
@@ -47,6 +60,13 @@ class InferencePipeline:
             raise
 
     def _load_vectordb(self):
+        """
+        Loads the FAISS vector database from the specified path.
+
+        Raises:
+            FileNotFoundError: If the vector database path does not exist.
+            Exception: If loading the vector database fails.
+        """
         if not os.path.exists(self.cfg.embeddings.embeddings_path):
             raise FileNotFoundError(
                 f"Vector database path does not exist: {self.cfg.embeddings.embeddings_path}"
@@ -69,6 +89,12 @@ class InferencePipeline:
             raise
 
     def _load_prompt_template(self):
+        """
+        Loads the prompt template from the specified file path.
+
+        Raises:
+            Exception: If the prompt template file cannot be loaded.
+        """
         self.logger.info("Loading Prompt Template")
 
         try:
@@ -87,6 +113,13 @@ class InferencePipeline:
             raise
 
     def _initialize_llm(self):
+        """
+        Initializes the language model (LLM) with the specified API key.
+
+        Raises:
+            ValueError: If the API key is missing.
+            Exception: If initializing the LLM fails.
+        """
         load_dotenv()
         api_key = os.getenv("api_key")
         if not api_key:
@@ -108,6 +141,9 @@ class InferencePipeline:
             raise
 
     def _create_retriever(self):
+        """
+        Creates a retriever for document retrieval based on the vector database.
+        """
         self.retriever = self.vectordb.as_retriever(
             search_kwargs={
                 "k": self.cfg.retrieve.k,
@@ -116,6 +152,9 @@ class InferencePipeline:
         )
 
     def _create_qa_chain(self):
+        """
+        Creates a RetrievalQA chain using the initialized LLM and retriever.
+        """
         self.qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm,
             chain_type=self.cfg.retrieval.chain_type,
@@ -126,6 +165,12 @@ class InferencePipeline:
         )
 
     def _open_questions(self):
+        """
+        Loads the list of questions from the specified file.
+
+        Raises:
+            Exception: If the questions file cannot be loaded.
+        """
         self.logger.info("Loading questions...")
 
         try:
@@ -141,6 +186,16 @@ class InferencePipeline:
             raise
 
     def _infer(self):
+        """
+        Runs inference on the loaded questions, retrieves relevant contexts,
+        and generates answers using the LLM.
+
+        Returns:
+            Dataset: A Hugging Face dataset containing the questions, contexts, and answers.
+
+        Raises:
+            Exception: If inference fails.
+        """
         folder_to_answers = os.path.dirname(self.cfg.llm.path_to_ans)
         os.makedirs(name=folder_to_answers, exist_ok=True)
 
@@ -186,6 +241,12 @@ class InferencePipeline:
         return Dataset.from_pandas(df=df)
 
     def run_inference(self):
+        """
+        Executes the full inference pipeline.
+
+        Returns:
+            Dataset: A dataset containing the questions, retrieved contexts, and generated answers.
+        """
         self._load_embedding_model()
         self._load_vectordb()
         self._load_prompt_template()

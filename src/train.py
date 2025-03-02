@@ -9,6 +9,17 @@ from utils.process_data import EPUBProcessor
 
 @hydra.main(version_base=None, config_path="../conf", config_name="training.yaml")
 def main(cfg):
+    """
+    Main function for executing the embedding pipeline.
+
+    This function:
+    - Sets up logging configuration.
+    - Processes EPUB documents using `EPUBProcessor`.
+    - Generates embeddings and stores them in a vector database using `PerformEmbeddings`.
+
+    Args:
+        cfg: A Hydra configuration object containing all necessary parameters.
+    """
     logger = logging.getLogger(__name__)
     logger.info("Setting up logging configuration.")
     setup_logging(
