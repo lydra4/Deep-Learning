@@ -5,11 +5,15 @@ import hydra
 import omegaconf
 from dotenv import load_dotenv
 from langchain_openai.chat_models import ChatOpenAI
+from langchain_openai.embeddings import OpenAIEmbeddings
 from ragas import evaluate
 from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import (
     AnswerRelevancy,
     ContextPrecision,
+    FactualCorrectness,
+    Faithfulness,
+    LLMContextRecall,
 )
 
 from inference.inference_pipeline import InferencePipeline
@@ -31,14 +35,17 @@ def main(cfg: omegaconf.dictconfig):
         raise ValueError("API key not found in environment variables.")
 
     evaluator_llm = LangchainLLMWrapper(ChatOpenAI(model="gpt-4o", api_key=api_key))
+    embeddings = LangchainLLMWrapper(OpenAIEmbeddings(model="gpt-4o", api_key=api_key))
 
     infer_pipeline = InferencePipeline(cfg=cfg, logger=logger)
     ragas_df = infer_pipeline.run_inference()
 
     metrics = [
-        AnswerRelevancy(llm=evaluator_llm),
+        AnswerRelevancy(llm=evaluator_llm, embeddings=embeddings),
         ContextPrecision(llm=evaluator_llm),
-        ContextPrecision(llm=evaluator_llm),
+        LLMContextRecall(llm=evaluator_llm),
+        Faithfulness(llm=evaluator_llm),
+        FactualCorrectness(llm=evaluator_llm),
     ]
 
     results = evaluate(dataset=ragas_df, metrics=metrics)
