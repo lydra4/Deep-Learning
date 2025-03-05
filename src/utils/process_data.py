@@ -8,7 +8,6 @@ import omegaconf
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
 from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from tika import parser
 
@@ -57,15 +56,10 @@ class EPUBProcessor(BaseLoader):
         text = re.sub(r"[^A-Za-z0-9\s]", "", text)
 
         stop_words = set(stopwords.words("english"))
-        lemmatizer = WordNetLemmatizer()
 
         tokenize_words = word_tokenize(text=text)
 
-        processed_words = [
-            lemmatizer.lemmatize(word)
-            for word in tokenize_words
-            if word not in stop_words
-        ]
+        processed_words = [word for word in tokenize_words if word not in stop_words]
 
         return " ".join(processed_words)
 
