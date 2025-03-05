@@ -1,3 +1,17 @@
 path: "./data/datasets/"
 file_extension: ".epub"
-nltk: ["stopwords", "punkt_tab", "wordnet"]
+
+whitespace: r"\s+"
+whitespace_replacement: " "
+
+url: r"http\S+|www\S+"
+url_replacement: ""
+
+non_alphanumeric: r"[^A-Za-z0-9\s\.,;:\'\"\?\!\-]"
+non_alphanumeric_replacement: ""
+
+consecutive_non_alphanumeric: r"([^A-Za-z0-9\s])\1+"
+consecutive_non_alphanumeric_replacement: r"\1"
+
+normalizes_newlines: r"\n\s*\n"
+two_lines: "\n\n"
