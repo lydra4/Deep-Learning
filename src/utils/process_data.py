@@ -3,25 +3,22 @@ import os
 import re
 from typing import List, Optional
 
-import nltk
 import omegaconf
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
 from tika import parser
 
 
 class EPUBProcessor(BaseLoader):
     """Processes EPUB files by extracting and cleaning text.
 
-    This class reads EPUB files from a specified directory, extracts their text content,
-    and applies preprocessing steps such as URL removal, non-alphanumeric filtering,
-    stopword removal, and lemmatization.
+    This class is responsible for reading EPUB files from a specified directory, extracting their text content,
+    and applying various preprocessing steps such as URL removal, non-alphanumeric filtering, stopword removal,
+    and lemmatization.
 
     Attributes:
         cfg (dict): Configuration dictionary containing preprocessing settings.
-        logger (logging.Logger, optional): Logger instance for logging messages.
+        logger (logging.Logger, optional): Logger instance for logging messages. Defaults to None.
     """
 
     def __init__(
@@ -30,7 +27,7 @@ class EPUBProcessor(BaseLoader):
         """Initializes the EPUBProcessor.
 
         Args:
-            cfg (dict): Configuration dictionary containing preprocessing settings.
+            cfg (omegaconf.dictconfig): Configuration dictionary containing preprocessing settings.
             logger (logging.Logger, optional): Logger instance for logging messages. Defaults to None.
         """
         self.cfg = cfg
@@ -39,60 +36,73 @@ class EPUBProcessor(BaseLoader):
     def _preprocess_text(self, text: str) -> str:
         """Cleans and preprocesses the extracted text.
 
-        The preprocessing steps include:
-        - Removing URLs.
-        - Removing non-alphanumeric characters.
-        - Tokenizing words.
-        - Removing stopwords.
-        - Lemmatizing words.
+        This method applies a series of preprocessing steps to the raw text extracted from an EPUB file,
+        including URL removal, non-alphanumeric character filtering, whitespace normalization,
+        and consecutive non-alphanumeric character handling.
 
         Args:
             text (str): Raw text extracted from an EPUB file.
 
         Returns:
-            str: Cleaned and preprocessed text.
+            str: The cleaned and preprocessed text.
         """
-        text = re.sub(r"www.\S+", "", text)
-        text = re.sub(r"[^A-Za-z0-9\s]", "", text)
+        text = re.sub(
+            self.cfg.preprocessing.whitespace,
+            self.cfg.preprocessing.whitespace_replacement,
+            text,
+        )
+        text = re.sub(
+            self.cfg.preprocessing.url, self.cfg.preprocessing.url_replacement, text
+        )
+        text = re.sub(
+            self.cfg.preprocessing.non_alphanumeric,
+            self.cfg.preprocessing.non_alphanumeric_replacement,
+            text,
+        )
+        text = re.sub(
+            self.cfg.preprocessing.consecutive_non_alphanumeric,
+            self.cfg.preprocessing.consecutive_non_alphanumeric_replacement,
+            text,
+        )
+        text = re.sub(
+            self.cfg.preprocessing.normalizes_newlines,
+            self.cfg.preprocessing.two_lines,
+            text,
+        )
 
-        stop_words = set(stopwords.words("english"))
-
-        tokenize_words = word_tokenize(text=text)
-
-        processed_words = [word for word in tokenize_words if word not in stop_words]
-
-        return " ".join(processed_words)
+        return text
 
     def load(self) -> List[Document]:
         """Loads and processes EPUB files from the specified directory.
 
-        Downloads necessary NLTK models, scans the directory for EPUB files, extracts their content,
-        preprocesses the text, and returns them as LangChain `Document` objects.
+        This method scans the directory for EPUB files, extracts their content using the Tika parser,
+        preprocesses the text using `_preprocess_text`, and returns the cleaned text as LangChain `Document` objects.
+
+        Args:
+            None
 
         Returns:
-            List[Document]: A list of LangChain Document objects containing extracted and cleaned text.
+            List[Document]: A list of LangChain `Document` objects containing extracted and cleaned text.
 
         Raises:
-            FileNotFoundError: If the directory does not exist or contains no EPUB files.
+            FileNotFoundError: If the specified directory does not exist or contains no EPUB files.
             ValueError: If no text is extracted from any EPUB file.
         """
-        for model in self.cfg["preprocessing"]["nltk"]:
-            nltk.download(model)
 
-        if not os.path.isdir(self.cfg["preprocessing"]["path"]):
+        if not os.path.isdir(self.cfg.preprocessing.path):
             raise FileNotFoundError(
-                f"Directory not found: {self.cfg['preprocessing']['path']}"
+                f"Directory not found: {self.cfg.preprocessing.path}"
             )
 
         epub_files = [
-            os.path.join(self.cfg["preprocessing"]["path"], file)
-            for file in os.listdir(self.cfg["preprocessing"]["path"])
-            if file.endswith(self.cfg["preprocessing"]["file_extension"])
+            os.path.join(self.cfg.preprocessing.path, file)
+            for file in os.listdir(self.cfg.preprocessing.path)
+            if file.endswith(self.cfg.preprocessing.file_extension)
         ]
 
         if not epub_files:
             raise FileNotFoundError(
-                f"No epub files found in {self.cfg['preprocessing']['path']}"
+                f"No epub files found in {self.cfg.preprocessing.path}"
             )
 
         extracted_documents = []
@@ -121,7 +131,7 @@ class EPUBProcessor(BaseLoader):
 
         if not extracted_documents:
             raise ValueError(
-                f"No valid text extracted from {self.cfg['preprocessing']['path']}"
+                f"No valid text extracted from {self.cfg.preprocessing.path}"
             )
 
         return extracted_documents
