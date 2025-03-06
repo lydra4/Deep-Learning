@@ -8,13 +8,7 @@ from langchain_openai.chat_models import ChatOpenAI
 from langchain_openai.embeddings import OpenAIEmbeddings
 from ragas import evaluate
 from ragas.llms import LangchainLLMWrapper
-from ragas.metrics import (
-    AnswerRelevancy,
-    ContextPrecision,
-    FactualCorrectness,
-    Faithfulness,
-    LLMContextRecall,
-)
+from ragas.metrics import Faithfulness
 
 from inference.inference_pipeline import InferencePipeline
 from utils.general_utils import setup_logging
@@ -40,15 +34,9 @@ def main(cfg: omegaconf.dictconfig):
     infer_pipeline = InferencePipeline(cfg=cfg, logger=logger)
     ragas_df = infer_pipeline.run_inference()
 
-    metrics = [
-        AnswerRelevancy(llm=evaluator_llm, embeddings=embeddings),
-        ContextPrecision(llm=evaluator_llm),
-        LLMContextRecall(llm=evaluator_llm),
-        Faithfulness(llm=evaluator_llm),
-        FactualCorrectness(llm=evaluator_llm),
-    ]
+    metrics = [Faithfulness()]
 
-    results = evaluate(dataset=ragas_df, metrics=metrics)
+    results = evaluate(dataset=ragas_df, metrics=metrics, llm=evaluator_llm)
 
     logger.info(f"Results: {results}")
 
