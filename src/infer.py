@@ -2,6 +2,7 @@ import logging
 import os
 
 import hydra
+
 from inference.inference_pipeline import InferencePipeline
 from utils.general_utils import setup_logging
 
