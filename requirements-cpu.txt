@@ -2,9 +2,9 @@ autoflake
 datasets
 faiss-cpu
 gensim
-huggingface_hub
+huggingface-hub==0.25.0
 hydra-core
-InstructorEmbedding
+InstructorEmbedding==1.0.1
 ipykernel
 langchain
 langchain-community
@@ -20,9 +20,8 @@ python-json-logger
 ragas
 rich
 ruff
-sentence-transformers
+sentence-transformers==2.2.2
 tika
 wordcloud
-torch
-torchvision
-torchaudio
+torch==2.4.1
+torchvision==0.19.1
