@@ -34,6 +34,7 @@ class InferencePipeline:
         self.retriever = None
         self.qa_chain = None
         self.qns_list: Optional[list] = None
+        self.ans_list: Optional[list] = None
         self.answer_file: Optional[str] = None
 
     def _load_embedding_model(self):
@@ -178,7 +179,8 @@ class InferencePipeline:
             ) as f:
                 lines = [line.rstrip("\n").strip() for line in f.readlines()]
 
-                self.qns_list = [line.strip() for line in lines]
+                self.qns_list = [line.split(" - ", 1)[0].strip() for line in lines]
+                self.ground_truth = [line.split(" - ", 1)[1].strip() for line in lines]
 
             self.logger.info(f"Loaded {len(self.qns_list)} questions.")
 
@@ -209,7 +211,7 @@ class InferencePipeline:
             encoding=locale.getencoding(),
             newline="\n",
         ) as self.answer_file:
-            for question in self.qns_list:
+            for question, ground_truth in zip(self.qns_list, self.ground_truth):
                 retrieved_docs = self.retriever.invoke(input=question)
 
                 for document in retrieved_docs:
@@ -227,14 +229,13 @@ class InferencePipeline:
                 data_list.append(
                     {
                         "user_input": question,
+                        "reference": ground_truth,
                         "response": llm_response["result"],
                         "retrieved_contexts": [
                             " ".join([doc.page_content for doc in retrieved_docs])
                         ],
                     }
                 )
-
-                # need to return data_list later for evaluation
 
                 self.answer_file.write(f"{question} - {llm_response['result']}.\n")
 
