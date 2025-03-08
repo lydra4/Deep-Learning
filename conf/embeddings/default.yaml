@@ -1,13 +1,12 @@
 text_splitter:
   separators: ["\n\n"]
-  chunk_size: 2_560_000
-  chunk_overlap: 25_800
+  chunk_size: 500
+  chunk_overlap: 50
 
 embeddings_model:
   model_name: "sentence-transformers/all-MiniLM-L6-v2"
   show_progress: True
   save_path: "./data/embeddings_model/"
-
 
 embed_documents:
   embeddings_path: "./data/embeddings/"
