@@ -4,6 +4,7 @@ import os
 from typing import Optional
 
 import omegaconf
+import pandas as pd
 import torch
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
@@ -99,7 +100,9 @@ class InferencePipeline:
 
         try:
             with open(
-                file=self.cfg.path_to_template, mode="r", encoding=locale.getencoding()
+                file=self.cfg.path_to_template,
+                mode="r",
+                encoding="utf-8",
             ) as f:
                 template = f.read()
 
@@ -238,6 +241,8 @@ class InferencePipeline:
                 )
 
                 self.answer_file.write(f"{question} - {llm_response['result']}.\n")
+
+            pd.DataFrame(data=data_list).to_csv("./data/data_list.csv")
 
         return EvaluationDataset.from_list(data=data_list)
 
