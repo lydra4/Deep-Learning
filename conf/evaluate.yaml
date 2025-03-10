@@ -1,2 +1,14 @@
 defaults:
+  - _self_
   - inference
+  - embeddings: default
+
+show_progress: True
+model: "gpt-4o"
+
+metrics:
+  answer_relevancy: True
+  context_precision: True
+  llm_context_recall: True
+  faithfulness: True
+  factual_correctness: True
