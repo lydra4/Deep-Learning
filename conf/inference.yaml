@@ -6,7 +6,7 @@ embeddings:
 path_to_template: "./data/inference/template.txt"
 
 retrieve:
-  k: 5
+  k: 10
   search_type: "similarity"
 
 llm:
