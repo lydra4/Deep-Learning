@@ -37,7 +37,7 @@ class InferencePipeline:
         self.ans_list: Optional[list] = None
         self.answer_file: Optional[str] = None
 
-    def _load_embedding_model(self):
+    def load_embedding_model(self):
         """
         Loads the embedding model specified in the configuration.
 
@@ -58,6 +58,8 @@ class InferencePipeline:
         except Exception as e:
             self.logger.error(f"Failed to load embedding model: {e}")
             raise
+
+        return self.embedding_model
 
     def _load_vectordb(self):
         """
@@ -241,7 +243,7 @@ class InferencePipeline:
 
                 self.answer_file.write(f"{question} - {llm_response['result']}.\n")
 
-        return EvaluationDataset.from_list(data=data_list)
+        return EvaluationDataset.from_list(data=data_list), len(self.qns_list)
 
     def run_inference(self):
         """
@@ -250,7 +252,7 @@ class InferencePipeline:
         Returns:
             Dataset: A dataset containing the questions, retrieved contexts, and generated answers.
         """
-        self._load_embedding_model()
+        self.load_embedding_model()
         self._load_vectordb()
         self._load_prompt_template()
         self._initialize_llm()
