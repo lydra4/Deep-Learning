@@ -4,7 +4,7 @@ defaults:
   - embeddings: default
 
 show_progress: True
-model: "gpt-4o"
+model: "gpt-4o-mini"
 timezone: "Asia/Singapore"
 datetime_format: "%d/%m/%y %H:%M"
 metric_path: "./logs/"
