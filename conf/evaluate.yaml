@@ -5,6 +5,9 @@ defaults:
 
 show_progress: True
 model: "gpt-4o"
+timezone: "Asia/Singapore"
+datetime_format: "%d/%m/%y %H:%M"
+metric_path: "./logs/"
 
 metrics:
   answer_relevancy: True
