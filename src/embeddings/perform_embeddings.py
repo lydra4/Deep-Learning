@@ -5,8 +5,8 @@ from typing import List, Optional
 
 import omegaconf
 import torch
-from hydra.utils import instantiate
 from langchain.docstore.document import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores import FAISS
 
@@ -41,10 +41,11 @@ class PerformEmbeddings:
         Returns:
             List[Document]: List of split text documents.
         """
-        self.logger.info(
-            f"Using {self.cfg.text_splitter._target_.rsplit('.', 1)[-1]}.\n"
-        )
-        text_splitter = instantiate(self.cfg.text_splitter)
+        self.logger.info(f"Using {self.cfg.embeddings.name}.\n")
+        if self.cfg.embeddings.name.lower() == "recursivecharactertextsplitter":
+            text_splitter = RecursiveCharacterTextSplitter(
+                **self.cfg.embeddings.text_splitter
+            )
 
         self.texts = text_splitter.split_documents(self.documents)
         self.logger.info(f"Text split into {len(self.texts)} parts.")
