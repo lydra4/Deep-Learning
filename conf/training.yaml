@@ -1,5 +1,5 @@
 defaults:
   - _self_
   - preprocessing: default
-  - text_splitter: recursivecharactertextsplitter
   - embeddings: default
+  - text_splitter: sentencetransformerstokentextsplitter
