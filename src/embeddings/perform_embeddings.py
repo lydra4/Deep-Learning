@@ -50,9 +50,12 @@ class PerformEmbeddings:
                 **self.cfg.text_splitter.text_splitter
             )
         elif (
-            self.cfg.embeddings.name.lower() == "sentencetransformerstokentextsplitter"
+            self.cfg.text_splitter.name.lower()
+            == "sentencetransformerstokentextsplitter"
         ):
-            text_splitter = SentenceTransformersTokenTextSplitter()
+            text_splitter = SentenceTransformersTokenTextSplitter(
+                **self.cfg.text_splitter.text_splitter
+            )
 
         self.texts = text_splitter.split_documents(self.documents)
         self.logger.info(f"Text split into {len(self.texts)} parts.")
