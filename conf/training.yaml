@@ -1,4 +1,5 @@
 defaults:
   - _self_
   - preprocessing: default
-  - embeddings: recursivecharactertextsplitter
+  - text_splitter: recursivecharactertextsplitter
+  - embeddings: default
