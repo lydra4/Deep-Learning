@@ -6,7 +6,10 @@ from typing import List, Optional
 import omegaconf
 import torch
 from langchain.docstore.document import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.text_splitter import (
+    RecursiveCharacterTextSplitter,
+    SentenceTransformersTokenTextSplitter,
+)
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores import FAISS
 
@@ -41,11 +44,15 @@ class PerformEmbeddings:
         Returns:
             List[Document]: List of split text documents.
         """
-        self.logger.info(f"Using {self.cfg.embeddings.name}.\n")
-        if self.cfg.embeddings.name.lower() == "recursivecharactertextsplitter":
+        self.logger.info(f"Using {self.cfg.text_splitter.name}.\n")
+        if self.cfg.text_splitter.name.lower() == "recursivecharactertextsplitter":
             text_splitter = RecursiveCharacterTextSplitter(
-                **self.cfg.embeddings.text_splitter
+                **self.cfg.text_splitter.text_splitter
             )
+        elif (
+            self.cfg.embeddings.name.lower() == "sentencetransformerstokentextsplitter"
+        ):
+            text_splitter = SentenceTransformersTokenTextSplitter()
 
         self.texts = text_splitter.split_documents(self.documents)
         self.logger.info(f"Text split into {len(self.texts)} parts.")
@@ -62,10 +69,8 @@ class PerformEmbeddings:
             HuggingFaceInstructEmbeddings: The loaded embeddings model.
         """
         model_config = {
-            "model_name": self.cfg["embeddings"]["embeddings_model"]["model_name"],
-            "show_progress": self.cfg["embeddings"]["embeddings_model"][
-                "show_progress"
-            ],
+            "model_name": self.cfg.embeddings.embeddings_model.model_name,
+            "show_progress": self.cfg.embeddings.embeddings_model.show_progress,
             "model_kwargs": {"device": device},
         }
         self.embedding_model = HuggingFaceInstructEmbeddings(**model_config)
@@ -89,16 +94,16 @@ class PerformEmbeddings:
         self.embeddings_model_name = re.sub(
             r'[<>:"/\\|?*]',
             "_",
-            self.cfg["embeddings"]["embeddings_model"]["model_name"].split("/")[-1],
+            self.cfg.embeddings.embeddings_model.model_name.split("/")[-1],
         )
         index_name = re.sub(
             r'[<>:"/\\|?*]',
             "_",
-            self.cfg["embeddings"]["embed_documents"]["index_name"],
+            self.cfg.embeddings.embed_documents.index_name,
         )
 
         self.embeddings_path = os.path.join(
-            self.cfg["embeddings"]["embed_documents"]["embeddings_path"],
+            self.cfg.embeddings.embed_documents.embeddings_path,
             self.embeddings_model_name,
             index_name,
         )
@@ -115,7 +120,7 @@ class PerformEmbeddings:
 
         vectordb.save_local(
             folder_path=self.embeddings_path,
-            index_name=self.cfg["embeddings"]["embed_documents"]["index_name"],
+            index_name=self.cfg.embeddings.embed_documents.index_name,
         )
 
         self.logger.info("Successfully saved.")
