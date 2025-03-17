@@ -49,6 +49,7 @@ class PerformEmbeddings:
             text_splitter = RecursiveCharacterTextSplitter(
                 **self.cfg.text_splitter.text_splitter
             )
+
         elif (
             self.cfg.text_splitter.name.lower()
             == "sentencetransformerstokentextsplitter"
