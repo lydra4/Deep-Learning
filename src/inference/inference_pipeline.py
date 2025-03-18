@@ -33,7 +33,6 @@ class InferencePipeline:
         self.logger = logger or logging.getLogger(__name__)
         self.embedding_model: Optional[HuggingFaceInstructEmbeddings] = None
         self.vectordb: Optional[FAISS] = None
-        self.prompt: Optional[PromptTemplate] = None
         self.llm: Optional[ChatOpenAI] = None
         self.retriever = None
         self.qa_chain = None
@@ -104,30 +103,37 @@ class InferencePipeline:
             self.logger.error(f"Failed to load vector database: {e}")
             raise
 
-    def _load_prompt_template(self):
+    def _load_prompt(self, path: str, input_variables: Optional[list] = None):
         """
         Loads the prompt template from the specified file path.
+
+        Args:
+            path (str): Path to the prompt template file.
+            input_variables (list, optional): List of input variables. Defaults to None.
 
         Raises:
             Exception: If the prompt template file cannot be loaded.
         """
-        self.logger.info("Loading Prompt Template.\n")
+        file_name = os.path.basename(path)
+        self.logger.info(f"Loading Prompt Template: {file_name}.\n")
 
         try:
             with open(
-                file=self.cfg.path_to_template,
+                file=path,
                 mode="r",
                 encoding="utf-8",
             ) as f:
                 template = f.read()
 
-            self.prompt = PromptTemplate(
-                template=template, input_variables=["context", "question"]
+            prompt = PromptTemplate(
+                template=template, input_variables=input_variables or []
             )
-            self.logger.info("Prompt template loaded successfully.\n")
+            self.logger.info(f"{file_name} loaded successfully.\n")
+
+            return prompt
 
         except Exception as e:
-            self.logger.error(f"Failed to load Prompt Template: {e}")
+            self.logger.error(f"Failed to load {file_name}: {e}")
             raise
 
     def _initialize_llm(self):
@@ -171,8 +177,15 @@ class InferencePipeline:
         )
 
         if self.cfg.retrieve.use_multiquery:
+            prompt = self._load_prompt(path=self.cfg.retrieve.path_to_multiquery_prompt)
+
             self.logger.info("Using Multiquery Retriever.\n")
-            retriever = MultiQueryRetriever.from_llm(retriever=retriever, llm=self.llm)
+            retriever = MultiQueryRetriever.from_llm(
+                retriever=retriever,
+                llm=self.llm,
+                include_original=self.cfg.retrieve.include_original,
+                prompt=prompt,
+            )
 
         if self.cfg.retrieve.reranker_model:
             self.logger.info(
@@ -198,11 +211,15 @@ class InferencePipeline:
         """
         Creates a RetrievalQA chain using the initialized LLM and retriever.
         """
+        prompt = self._load_prompt(
+            path=self.cfg.path_to_qa_prompt, input_variables=["context", "question"]
+        )
+
         self.qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm,
             chain_type=self.cfg.retrieval.chain_type,
             retriever=self.retriever,
-            chain_type_kwargs={"prompt": self.prompt},
+            chain_type_kwargs={"prompt": prompt},
             return_source_documents=self.cfg.retrieval.return_source_documents,
             verbose=self.cfg.retrieval.verbose,
         )
@@ -293,7 +310,6 @@ class InferencePipeline:
         """
         self.load_embedding_model()
         self._load_vectordb()
-        self._load_prompt_template()
         self._initialize_llm()
         self._create_retriever()
         self._create_qa_chain()
