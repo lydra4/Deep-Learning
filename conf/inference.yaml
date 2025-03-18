@@ -3,13 +3,15 @@ embeddings:
   embeddings_model_name: "sentence-transformers/all-MiniLM-L6-v2"
   show_progress: True
 
-path_to_template: "./data/inference/template.txt"
+path_to_qa_prompt: "./data/inference/qa_prompt.txt"
 
 retrieve:
   k: 5
   search_type: "similarity"
   reranker_model: ""
   use_multiquery: True
+  include_original: True
+  path_to_multiquery_prompt: "./data/inference/multiquery_prompt.txt"
 
 llm:
   model: "gpt-4o-mini"
