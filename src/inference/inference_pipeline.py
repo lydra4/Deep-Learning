@@ -9,6 +9,7 @@ import torch
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.prompts.prompt import PromptTemplate
+from langchain.retrievers import MultiQueryRetriever
 from langchain.retrievers.contextual_compression import ContextualCompressionRetriever
 from langchain_cohere import CohereRerank
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
@@ -168,6 +169,10 @@ class InferencePipeline:
                 "search_type": self.cfg.retrieve.search_type,
             }
         )
+
+        if self.cfg.retrieve.use_multiquery:
+            self.logger.info("Using Multiquery Retriever.\n")
+            retriever = MultiQueryRetriever.from_llm(retriever=retriever, llm=self.llm)
 
         if self.cfg.retrieve.reranker_model:
             self.logger.info(
