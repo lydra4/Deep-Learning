@@ -6,8 +6,9 @@ embeddings:
 path_to_template: "./data/inference/template.txt"
 
 retrieve:
-  k: 10
+  k: 5
   search_type: "similarity"
+  reranker_model: "rerank-english-v3.0"
 
 llm:
   model: "gpt-4o-mini"
