@@ -9,6 +9,8 @@ import torch
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.prompts.prompt import PromptTemplate
+from langchain.retrievers.contextual_compression import ContextualCompressionRetriever
+from langchain_cohere import CohereRerank
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_openai.chat_models import ChatOpenAI
@@ -63,7 +65,7 @@ class InferencePipeline:
                 model_kwargs={"device": device},
             )
             self.logger.info(
-                f"Embedding model, {embeddings_model_name} loaded successfully."
+                f"Embedding model, {embeddings_model_name} loaded successfully.\n"
             )
 
         except Exception as e:
@@ -86,7 +88,7 @@ class InferencePipeline:
             )
 
         index_name = os.path.basename(self.cfg.embeddings.embeddings_path)
-        self.logger.info("Loading Vector database")
+        self.logger.info("Loading Vector database.\n")
 
         try:
             self.vectordb = FAISS.load_local(
@@ -95,7 +97,7 @@ class InferencePipeline:
                 index_name=index_name,
                 allow_dangerous_deserialization=True,
             )
-            self.logger.info("Vector database loaded successfully.")
+            self.logger.info("Vector database loaded successfully.\n")
 
         except Exception as e:
             self.logger.error(f"Failed to load vector database: {e}")
@@ -108,7 +110,7 @@ class InferencePipeline:
         Raises:
             Exception: If the prompt template file cannot be loaded.
         """
-        self.logger.info("Loading Prompt Template")
+        self.logger.info("Loading Prompt Template.\n")
 
         try:
             with open(
@@ -121,7 +123,7 @@ class InferencePipeline:
             self.prompt = PromptTemplate(
                 template=template, input_variables=["context", "question"]
             )
-            self.logger.info("Prompt template loaded successfully.")
+            self.logger.info("Prompt template loaded successfully.\n")
 
         except Exception as e:
             self.logger.error(f"Failed to load Prompt Template: {e}")
@@ -140,7 +142,7 @@ class InferencePipeline:
         if not api_key:
             raise ValueError("API key not found in environment variables.")
 
-        self.logger.info("Initializing LLM")
+        self.logger.info("Initializing LLM.\n")
         try:
             self.llm = ChatOpenAI(
                 model=self.cfg.llm.model,
@@ -148,7 +150,7 @@ class InferencePipeline:
                 api_key=api_key,
             )
             self.logger.info(
-                f"LLM successfully initialized with model: {self.cfg.llm.model}"
+                f"LLM successfully initialized with model: {self.cfg.llm.model}.\n"
             )
 
         except Exception as e:
@@ -159,12 +161,33 @@ class InferencePipeline:
         """
         Creates a retriever for document retrieval based on the vector database.
         """
-        self.retriever = self.vectordb.as_retriever(
+        self.logger.info("Initializing document retriever.\n")
+        retriever = self.vectordb.as_retriever(
             search_kwargs={
                 "k": self.cfg.retrieve.k,
                 "search_type": self.cfg.retrieve.search_type,
             }
         )
+
+        if self.cfg.retrieve.reranker_model:
+            self.logger.info(
+                f"Wrapping retriever with reranker model: {self.cfg.retrieve.reranker_model}.\n"
+            )
+
+            cohere_api_key = os.getenv("cohere_api_key")
+            if not cohere_api_key:
+                self.logger.error("Cohere API key is missing.")
+                raise ValueError("Cohere API key is missing.")
+
+            compressor = CohereRerank(
+                model=self.cfg.retrieve.reranker_model, cohere_api_key=cohere_api_key
+            )
+            self.retriever = ContextualCompressionRetriever(
+                base_compressor=compressor, base_retriever=retriever
+            )
+
+        else:
+            self.retriever = retriever
 
     def _create_qa_chain(self):
         """
@@ -186,7 +209,7 @@ class InferencePipeline:
         Raises:
             Exception: If the questions file cannot be loaded.
         """
-        self.logger.info("Loading questions...")
+        self.logger.info("Loading questions.\n")
 
         try:
             with open(
@@ -197,7 +220,7 @@ class InferencePipeline:
                 self.qns_list = [line.split(" - ", 1)[0].strip() for line in lines]
                 self.ground_truth = [line.split(" - ", 1)[1].strip() for line in lines]
 
-            self.logger.info(f"Loaded {len(self.qns_list)} questions.")
+            self.logger.info(f"Loaded {len(self.qns_list)} questions.\n")
 
         except Exception as e:
             self.logger.error(f"Failed to load questions: {e}")
@@ -217,7 +240,7 @@ class InferencePipeline:
         folder_to_answers = os.path.dirname(self.cfg.llm.path_to_ans)
         os.makedirs(name=folder_to_answers, exist_ok=True)
 
-        self.logger.info(f"Saving answers to {self.cfg.llm.path_to_ans}")
+        self.logger.info(f"Saving answers to {self.cfg.llm.path_to_ans}.\n")
         data_list = []
 
         with open(
