@@ -1,6 +1,7 @@
 import locale
 import logging
 import os
+import re
 from typing import Optional
 
 import omegaconf
@@ -45,7 +46,15 @@ class InferencePipeline:
             Exception: If the embedding model fails to load.
         """
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.logger.info(f"Loading embedding model on {device.upper()}\n")
+        embeddings_model_name = re.sub(
+            r'[<>:"/\\|?*]',
+            "_",
+            self.cfg.embeddings.embeddings_model.model_name.split("/")[-1],
+        )
+
+        self.logger.info(
+            f"Loading embedding model, {embeddings_model_name} on {device.upper()}\n"
+        )
 
         try:
             self.embedding_model = HuggingFaceInstructEmbeddings(
@@ -53,7 +62,9 @@ class InferencePipeline:
                 show_progress=self.cfg.embeddings.show_progress,
                 model_kwargs={"device": device},
             )
-            self.logger.info("Embedding model loaded successfully.")
+            self.logger.info(
+                f"Embedding model, {embeddings_model_name} loaded successfully."
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to load embedding model: {e}")
