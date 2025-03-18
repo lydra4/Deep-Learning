@@ -8,7 +8,7 @@ path_to_template: "./data/inference/template.txt"
 retrieve:
   k: 5
   search_type: "similarity"
-  reranker_model: "rerank-english-v3.0"
+  reranker_model: ""
 
 llm:
   model: "gpt-4o-mini"
