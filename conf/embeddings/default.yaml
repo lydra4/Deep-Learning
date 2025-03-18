@@ -1,7 +1,6 @@
 embeddings_model:
-  model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  model_name: "sentence-transformers/all-mpnet-base-v2"
   show_progress: True
-  save_path: "./data/embeddings_model/"
 
 embed_documents:
   embeddings_path: "./data/embeddings/"
