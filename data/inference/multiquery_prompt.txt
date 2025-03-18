@@ -1,0 +1,10 @@
+You are an assistant tasked with generating multiple versions of a user query to improve document retrieval.
+
+Given the user's question:  
+"{question}"  
+
+Generate **two** additional rephrasings of this question.  
+
+Ensure that the variations preserve the meaning but differ in phrasing.  
+
+Format your output as a list, with each query on a new line.
