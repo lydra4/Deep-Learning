@@ -14,6 +14,7 @@ from langchain.retrievers.contextual_compression import ContextualCompressionRet
 from langchain_cohere import CohereRerank
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai.chat_models import ChatOpenAI
 from ragas import EvaluationDataset
 
@@ -56,7 +57,7 @@ class InferencePipeline:
         embeddings_model_name = re.sub(
             r'[<>:"/\\|?*]',
             "_",
-            self.cfg.embeddings.embeddings_model.model_name.split("/")[-1],
+            self.cfg.embeddings.embeddings_model_name.split("/")[-1],
         )
 
         self.logger.info(
@@ -155,23 +156,35 @@ class InferencePipeline:
             Exception: If initializing the LLM fails.
         """
         load_dotenv()
-        api_key = os.getenv("api_key")
-        if not api_key:
-            raise ValueError("API key not found in environment variables.")
 
-        self.logger.info("Initializing LLM.\n")
+        model = self.cfg.llm.model
+        temperature = self.cfg.llm.temperature
+        api_key_env_var = "OPENAI_API_KEY" if "gpt-" in model else "GEMINI_API_KEY"
+        api_key = os.getenv(api_key_env_var)
+
+        if not api_key:
+            raise ValueError(f"{api_key_env_var} not found in enviroment variables.")
+
+        self.logger.info(f"Initializing {model}.\n")
+
         try:
-            self.llm = ChatOpenAI(
-                model=self.cfg.llm.model,
-                temperature=self.cfg.llm.temperature,
-                api_key=api_key,
-            )
-            self.logger.info(
-                f"LLM successfully initialized with model: {self.cfg.llm.model}.\n"
-            )
+            if "gpt-" in model:
+                self.llm = ChatOpenAI(
+                    model=model, temperature=temperature, api_key=api_key
+                )
+
+            elif "gemini" in model:
+                self.llm = ChatGoogleGenerativeAI(
+                    model=model, temperature=temperature, api_key=api_key
+                )
+
+            else:
+                raise ValueError(f"Unsupported model: {model}")
+
+            self.logger.info(f"LLM successfully initialized with model: {model}.\n")
 
         except Exception as e:
-            self.logger.error(f"Failed to initialize LLM: {e}")
+            self.logger.error(f"Failed to initialize {model}: {e}")
             raise
 
     def _create_retriever(self) -> None:
