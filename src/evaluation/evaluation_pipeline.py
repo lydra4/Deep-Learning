@@ -9,6 +9,7 @@ import pandas as pd
 import pytz
 from dotenv import load_dotenv
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai.chat_models import ChatOpenAI
 from ragas import evaluate
 from ragas.llms import LangchainLLMWrapper
@@ -80,7 +81,9 @@ class EvaluationPipeline:
             RuntimeError: If LLM initialization fails.
         """
         load_dotenv()
-        api_key = os.getenv("api_key")
+        model = self.cfg.model
+        api_key_env_var = "OPENAI_API_KEY" if "gpt-" in model else "GEMINI_API_KEY"
+        api_key = os.getenv(api_key_env_var)
 
         if not api_key:
             self.logger.error(
@@ -89,10 +92,18 @@ class EvaluationPipeline:
             raise ValueError("API key not found in environment variables.")
 
         try:
-            self.evaluator_llm = LangchainLLMWrapper(
-                ChatOpenAI(model=self.cfg.model, api_key=api_key)
-            )
-            self.logger.info(f"{self.cfg.model} successfully initialized.")
+            if "gpt-" in model:
+                llm = ChatOpenAI(model=model, api_key=api_key)
+
+            elif "gemini" in model:
+                llm = ChatGoogleGenerativeAI(model=model, api_key=api_key)
+
+            else:
+                raise ValueError(f"Unsupported model: {model}.")
+
+            self.evaluator_llm = LangchainLLMWrapper(langchain_llm=llm)
+            self.logger.info(f"{model} successfully initialized.\n")
+
         except Exception as e:
             self.logger.error(f"Failed to initialize LLM: {e}")
             raise RuntimeError(
