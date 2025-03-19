@@ -7,6 +7,7 @@ from typing import Optional
 import omegaconf
 import torch
 from dotenv import load_dotenv
+from langchain.chains.hyde.base import HypotheticalDocumentEmbedder
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.prompts.prompt import PromptTemplate
 from langchain.retrievers import MultiQueryRetriever
@@ -208,7 +209,7 @@ class InferencePipeline:
             )
 
             self.logger.info("Using Multiquery Retriever.\n")
-            retriever = MultiQueryRetriever.from_llm(
+            self.retriever = MultiQueryRetriever.from_llm(
                 retriever=retriever,
                 llm=self.llm,
                 include_original=self.cfg.retrieve.multiquery.include_original,
@@ -231,6 +232,15 @@ class InferencePipeline:
             self.retriever = ContextualCompressionRetriever(
                 base_compressor=compressor, base_retriever=retriever
             )
+
+        if self.cfg.retrieve.use_hyde:
+            self.logger.info("Wrapping retriever with HYDE.\n")
+            hyde_embedder = HypotheticalDocumentEmbedder.from_llm(
+                llm=self.llm,
+                base_embeddings=self.embedding_model,
+                prompt_key="web_search",
+            )
+            self.retriever = hyde_embedder.as_retriever(base_retriever=retriever)
 
         else:
             self.retriever = retriever
