@@ -10,9 +10,12 @@ retrieve:
   search_type: "similarity"
   reranker_model: ""
   use_multiquery: False
+
   multiquery:
     include_original: True
     path_to_multiquery_prompt: "./data/inference/multiquery_prompt.txt"
+
+  use_hyde: True
 
 llm:
   model: "gemini-2.0-flash-thinking-exp-01-21"
