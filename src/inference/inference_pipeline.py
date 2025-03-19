@@ -190,6 +190,9 @@ class InferencePipeline:
     def _create_retriever(self) -> None:
         """
         Creates a retriever for document retrieval based on the vector database.
+
+        Raises:
+            ValueError: If the Cohere API key is missing.
         """
         self.logger.info("Initializing document retriever.\n")
         retriever = self.vectordb.as_retriever(
