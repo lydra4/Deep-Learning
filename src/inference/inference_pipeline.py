@@ -19,6 +19,8 @@ from ragas import EvaluationDataset
 
 
 class InferencePipeline:
+    """Pipeline for running retrieval-augmented generation (RAG) inference."""
+
     def __init__(
         self, cfg: omegaconf.DictConfig, logger: Optional[logging.Logger] = None
     ) -> None:
@@ -40,9 +42,12 @@ class InferencePipeline:
         self.ans_list: Optional[list] = None
         self.answer_file: Optional[str] = None
 
-    def load_embedding_model(self):
+    def load_embedding_model(self) -> HuggingFaceInstructEmbeddings:
         """
         Loads the embedding model specified in the configuration.
+
+        Returns:
+            HuggingFaceInstructEmbeddings: The loaded embedding model.
 
         Raises:
             Exception: If the embedding model fails to load.
@@ -74,7 +79,7 @@ class InferencePipeline:
 
         return self.embedding_model
 
-    def _load_vectordb(self):
+    def _load_vectordb(self) -> None:
         """
         Loads the FAISS vector database from the specified path.
 
@@ -103,13 +108,18 @@ class InferencePipeline:
             self.logger.error(f"Failed to load vector database: {e}")
             raise
 
-    def _load_prompt(self, path: str, input_variables: Optional[list] = None):
+    def _load_prompt(
+        self, path: str, input_variables: Optional[list] = None
+    ) -> PromptTemplate:
         """
         Loads the prompt template from the specified file path.
 
         Args:
             path (str): Path to the prompt template file.
             input_variables (list, optional): List of input variables. Defaults to None.
+
+        Returns:
+            PromptTemplate: The loaded prompt template.
 
         Raises:
             Exception: If the prompt template file cannot be loaded.
@@ -136,7 +146,7 @@ class InferencePipeline:
             self.logger.error(f"Failed to load {file_name}: {e}")
             raise
 
-    def _initialize_llm(self):
+    def _initialize_llm(self) -> None:
         """
         Initializes the language model (LLM) with the specified API key.
 
@@ -164,7 +174,7 @@ class InferencePipeline:
             self.logger.error(f"Failed to initialize LLM: {e}")
             raise
 
-    def _create_retriever(self):
+    def _create_retriever(self) -> None:
         """
         Creates a retriever for document retrieval based on the vector database.
         """
@@ -177,13 +187,15 @@ class InferencePipeline:
         )
 
         if self.cfg.retrieve.use_multiquery:
-            prompt = self._load_prompt(path=self.cfg.retrieve.path_to_multiquery_prompt)
+            prompt = self._load_prompt(
+                path=self.cfg.retrieve.multiquery.path_to_multiquery_prompt
+            )
 
             self.logger.info("Using Multiquery Retriever.\n")
             retriever = MultiQueryRetriever.from_llm(
                 retriever=retriever,
                 llm=self.llm,
-                include_original=self.cfg.retrieve.include_original,
+                include_original=self.cfg.retrieve.multiquery.include_original,
                 prompt=prompt,
             )
 
@@ -301,12 +313,12 @@ class InferencePipeline:
 
         return EvaluationDataset.from_list(data=data_list), len(self.qns_list)
 
-    def run_inference(self):
+    def run_inference(self) -> EvaluationDataset:
         """
         Executes the full inference pipeline.
 
         Returns:
-            Dataset: A dataset containing the questions, retrieved contexts, and generated answers.
+            EvaluationDataset: A dataset containing the questions, retrieved contexts, and generated answers.
         """
         self.load_embedding_model()
         self._load_vectordb()
