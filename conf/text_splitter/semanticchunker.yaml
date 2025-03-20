@@ -1,0 +1,4 @@
+name: "semantic_chunker"
+
+text_splitter:
+  breakpoint_threshold_type: "percentile"
