@@ -2,6 +2,7 @@ import logging
 import os
 
 import hydra
+
 from embeddings.perform_embeddings import PerformEmbeddings
 from utils.general_utils import setup_logging
 from utils.process_data import EPUBProcessor
@@ -21,7 +22,7 @@ def main(cfg):
         cfg: A Hydra configuration object containing all necessary parameters.
     """
     logger = logging.getLogger(__name__)
-    logger.info("Setting up logging configuration.")
+    logger.info("Setting up logging configuration.\n")
     setup_logging(
         logging_config_path=os.path.join(
             hydra.utils.get_original_cwd(), "conf", "logging.yaml"
