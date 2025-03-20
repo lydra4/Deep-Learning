@@ -12,6 +12,7 @@ from langchain.text_splitter import (
 )
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_experimental.text_splitter import SemanticChunker
 
 
 class PerformEmbeddings:
@@ -44,6 +45,8 @@ class PerformEmbeddings:
         Returns:
             List[Document]: List of split text documents.
         """
+        self.embedding_model = self._load_embeddings_model()
+
         self.logger.info(f"Using {self.cfg.text_splitter.name}.\n")
         if self.cfg.text_splitter.name.lower() == "recursivecharactertextsplitter":
             text_splitter = RecursiveCharacterTextSplitter(
@@ -58,12 +61,18 @@ class PerformEmbeddings:
                 **self.cfg.text_splitter.text_splitter
             )
 
+        elif self.cfg.text_splitter.name.lower() == "semanticchunker":
+            text_splitter = SemanticChunker(
+                embeddings=self.embedding_model,
+                breakpoint_threshold_type=self.cfg.text_splitter.text_splitter.breakpoint_threshold_type,
+            )
+
         self.texts = text_splitter.split_documents(self.documents)
         self.logger.info(f"Text split into {len(self.texts)} parts.")
 
         return self.texts
 
-    def _load_embeddings_model(self, device: str) -> HuggingFaceInstructEmbeddings:
+    def _load_embeddings_model(self) -> HuggingFaceInstructEmbeddings:
         """Loads the HuggingFace embedding model on the specified device.
 
         Args:
@@ -72,13 +81,17 @@ class PerformEmbeddings:
         Returns:
             HuggingFaceInstructEmbeddings: The loaded embeddings model.
         """
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.logger.info(f"Embedding model will be loaded to {device}.\n")
+
         model_config = {
             "model_name": self.cfg.embeddings.embeddings_model.model_name,
             "show_progress": self.cfg.embeddings.embeddings_model.show_progress,
             "model_kwargs": {"device": device},
         }
         self.embedding_model = HuggingFaceInstructEmbeddings(**model_config)
-        self.logger.info(f"Embedding Model loaded to {device.upper()}")
+
+        self.logger.info(f"Embedding Model loaded to {device.upper()}.\n")
 
         return self.embedding_model
 
@@ -90,10 +103,6 @@ class PerformEmbeddings:
         """
         if not self.texts:
             self._split_text()
-
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.logger.info(f"Embedding model will be loaded to {device}")
-        self.embedding_model = self._load_embeddings_model(device=device)
 
         self.embeddings_model_name = re.sub(
             r'[<>:"/\\|?*]',
@@ -135,6 +144,6 @@ class PerformEmbeddings:
         Returns:
             FAISS: The loaded FAISS vector store.
         """
-        self.logger.info("Starting document processing and generating embeddings")
+        self.logger.info("Starting document processing and generating embeddings.\n")
         self._split_text()
         self._embed_documents()
