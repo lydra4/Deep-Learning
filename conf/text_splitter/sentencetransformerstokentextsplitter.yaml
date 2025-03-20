@@ -1,4 +1,4 @@
-name: "sentencetransformerstokentextsplitter"
+name: "sentence_transformers_token_text_splitter"
 
 text_splitter:
   model_name: "sentence-transformers/all-mpnet-base-v2"
