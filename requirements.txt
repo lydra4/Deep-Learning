@@ -9,6 +9,7 @@ ipykernel
 langchain
 langchain-cohere
 langchain-community
+langchain-experimental
 langchain-google-genai
 langchain-openai
 omegaconf
