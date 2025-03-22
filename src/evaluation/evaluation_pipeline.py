@@ -8,6 +8,7 @@ import omegaconf
 import pandas as pd
 import pytz
 from dotenv import load_dotenv
+from inference.inference_pipeline import InferencePipeline
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai.chat_models import ChatOpenAI
@@ -21,20 +22,20 @@ from ragas.metrics import (
     LLMContextRecall,
 )
 
-from inference.inference_pipeline import InferencePipeline
-
 
 class EvaluationPipeline:
     """
     A pipeline for evaluating a retrieval-augmented generation (RAG) system using various metrics.
 
     Attributes:
-        cfg (omegaconf.DictConfig): The configuration object.
+        cfg (omegaconf.DictConfig): Configuration object containing pipeline settings.
         logger (logging.Logger): Logger instance for logging messages.
         embedding_model (Optional[HuggingFaceInstructEmbeddings]): Embedding model used for retrieval evaluation.
         ragas_df (Optional[pd.DataFrame]): Dataframe storing inference results.
         evaluator_llm (Optional[LangchainLLMWrapper]): LLM wrapper for evaluation.
-        metrics (List[object]): List of evaluation metrics used in the pipeline.
+        metrics (list[object]): List of evaluation metrics used in the pipeline.
+        no_of_questions (Optional[int]): Number of questions used in evaluation.
+        cleaned_text_splitter (Optional[str]): Text splitting strategy applied to the dataset.
     """
 
     def __init__(
@@ -44,8 +45,8 @@ class EvaluationPipeline:
         Initializes the EvaluationPipeline with configuration and logging.
 
         Args:
-            cfg (omegaconf.DictConfig): Configuration object.
-            logger (Optional[logging.Logger]): Logger instance. Defaults to None.
+            cfg (omegaconf.DictConfig): Configuration object containing evaluation parameters.
+            logger (Optional[logging.Logger]): Logger instance for logging messages. Defaults to None.
         """
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
@@ -54,17 +55,22 @@ class EvaluationPipeline:
         self.evaluator_llm: Optional[LangchainLLMWrapper] = None
         self.metrics: list[object] = []
         self.no_of_questions: Optional[int] = None
+        self.cleaned_text_splitter: Optional[str] = None
 
     def _run_inference(self):
         """
         Runs inference using the InferencePipeline.
 
+        This method initializes the inference pipeline, loads the embedding model, and runs inference.
+
         Raises:
-            RuntimeError: If inference fails.
+            RuntimeError: If inference fails due to an internal error.
         """
         try:
             infer_pipeline = InferencePipeline(cfg=self.cfg, logger=self.logger)
-            self.embedding_model = infer_pipeline.load_embedding_model()
+            self.embedding_model, self.cleaned_text_splitter = (
+                infer_pipeline.load_embedding_model()
+            )
             self.ragas_df, self.no_of_questions = infer_pipeline.run_inference()
         except Exception as e:
             self.logger.error(f"Failed to run inference: {e}")
@@ -74,11 +80,13 @@ class EvaluationPipeline:
 
     def _initialize_llm(self):
         """
-        Initializes the LLM model for evaluation.
+        Initializes the LLM model for evaluation based on the specified configuration.
+
+        Loads API keys from the environment and initializes the appropriate LLM model.
 
         Raises:
-            ValueError: If the API key is missing.
-            RuntimeError: If LLM initialization fails.
+            ValueError: If the API key is missing or an unsupported model is specified.
+            RuntimeError: If LLM initialization fails due to configuration or API issues.
         """
         load_dotenv()
         model = self.cfg.model
@@ -114,8 +122,10 @@ class EvaluationPipeline:
         """
         Sets up evaluation metrics based on the configuration.
 
+        This method initializes and configures the metrics used for evaluation.
+
         Raises:
-            RuntimeError: If LLM or embedding model is not initialized.
+            RuntimeError: If the LLM or embedding model is not initialized before metric setup.
         """
         if self.evaluator_llm is None:
             raise RuntimeError("LLM is not initialized. Call _initialize_llm first")
@@ -142,12 +152,13 @@ class EvaluationPipeline:
 
     def evaluation(self):
         """
-        Executes the full evaluation pipeline, including:
-        1. Loading the embedding model.
-        2. Running inference.
-        3. Initializing the LLM.
-        4. Setting up evaluation metrics.
-        5. Running the evaluation process.
+        Executes the full evaluation pipeline.
+
+        This includes:
+        - Running inference.
+        - Initializing the LLM model.
+        - Setting up evaluation metrics.
+        - Running the evaluation process and saving results.
 
         Raises:
             RuntimeError: If any component fails during execution.
@@ -173,7 +184,10 @@ class EvaluationPipeline:
             evaluation_entry = {
                 "timestamp": timestamp_sgt,
                 "no_of_questions": self.no_of_questions,
-                "embedding_model": self.cfg.embeddings.embeddings_model.model_name,
+                "embedding_model": self.cfg.embeddings.embeddings_model.model_name.split(
+                    "/"
+                )[1],
+                "text_splitter": self.cleaned_text_splitter,
                 "llm": self.cfg.model,
                 "metrics": results_dict,
             }
