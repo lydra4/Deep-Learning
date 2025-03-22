@@ -16,7 +16,18 @@ from langchain_experimental.text_splitter import SemanticChunker
 
 
 class PerformEmbeddings:
-    """Handles document embedding and FAISS vector database operations."""
+    """
+    Handles document embedding and FAISS vector database operations.
+
+    Attributes:
+        cfg (omegaconf.DictConfig): Configuration settings.
+        documents (List[Document]): List of documents to process.
+        logger (logging.Logger): Logger instance for logging messages.
+        texts (List[Document]): List of processed text documents.
+        embedding_model (Optional[HuggingFaceInstructEmbeddings]): Loaded embedding model.
+        embeddings_path (Optional[str]): Path where embeddings are stored.
+        embeddings_model_name (Optional[str]): Name of the embedding model.
+    """
 
     def __init__(
         self,
@@ -24,12 +35,13 @@ class PerformEmbeddings:
         documents: List[Document],
         logger: Optional[logging.Logger] = None,
     ) -> None:
-        """Initializes the PerformEmbeddings class.
+        """
+        Initializes the PerformEmbeddings class.
 
         Args:
-            cfg (dict): Configuration dictionary.
-            documents (List[Document]): List of documents to process.
-            logger (Optional[logging.Logger]): Logger instance for logging messages.
+            cfg (omegaconf.DictConfig): Configuration dictionary.
+            documents (List[Document]): List of documents to be processed.
+            logger (Optional[logging.Logger], optional): Logger instance. Defaults to None.
         """
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
@@ -40,28 +52,31 @@ class PerformEmbeddings:
         self.embeddings_model_name: Optional[str] = None
 
     def _split_text(self) -> List[Document]:
-        """Splits documents into smaller chunks based on configuration.
+        """
+        Splits the input documents into smaller chunks based on the configured text splitter.
 
         Returns:
-            List[Document]: List of split text documents.
+            List[Document]: A list of split text documents.
         """
         self.embedding_model = self._load_embeddings_model()
 
-        self.logger.info(f"Using {self.cfg.text_splitter.name}.\n")
-        if self.cfg.text_splitter.name.lower() == "recursivecharactertextsplitter":
+        self.logger.info(f"Using {self.cfg.text_splitter.name.replace('_', ' ')}.\n")
+
+        if self.cfg.text_splitter.name.lower() == "recursive_character_text_splitter":
             text_splitter = RecursiveCharacterTextSplitter(
                 **self.cfg.text_splitter.text_splitter
             )
 
         elif (
             self.cfg.text_splitter.name.lower()
-            == "sentencetransformerstokentextsplitter"
+            == "sentence_transformers_token_text_splitter"
         ):
             text_splitter = SentenceTransformersTokenTextSplitter(
-                **self.cfg.text_splitter.text_splitter
+                model_name=self.cfg.embeddings.embeddings_model.model_name,
+                chunk_overlap=self.cfg.text_splitter.text_splitter.chunk_overlap,
             )
 
-        elif self.cfg.text_splitter.name.lower() == "semanticchunker":
+        elif self.cfg.text_splitter.name.lower() == "semantic_chunker":
             text_splitter = SemanticChunker(
                 embeddings=self.embedding_model,
                 breakpoint_threshold_type=self.cfg.text_splitter.text_splitter.breakpoint_threshold_type,
@@ -73,13 +88,11 @@ class PerformEmbeddings:
         return self.texts
 
     def _load_embeddings_model(self) -> HuggingFaceInstructEmbeddings:
-        """Loads the HuggingFace embedding model on the specified device.
-
-        Args:
-            device (str): The device to load the embeddings model on.
+        """
+        Loads the HuggingFace embedding model onto the appropriate device (CPU or GPU).
 
         Returns:
-            HuggingFaceInstructEmbeddings: The loaded embeddings model.
+            HuggingFaceInstructEmbeddings: The loaded embedding model.
         """
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.logger.info(f"Embedding model will be loaded to {device}.\n")
@@ -96,7 +109,8 @@ class PerformEmbeddings:
         return self.embedding_model
 
     def _embed_documents(self) -> FAISS:
-        """Splits, embeds documents, and saves the vector store to disk.
+        """
+        Splits the documents, generates embeddings, and saves the vector store.
 
         Returns:
             FAISS: The FAISS vector store containing the document embeddings.
@@ -109,40 +123,36 @@ class PerformEmbeddings:
             "_",
             self.cfg.embeddings.embeddings_model.model_name.split("/")[-1],
         )
-        index_name = re.sub(
-            r'[<>:"/\\|?*]',
-            "_",
-            self.cfg.embeddings.embed_documents.index_name,
-        )
 
         self.embeddings_path = os.path.join(
             self.cfg.embeddings.embed_documents.embeddings_path,
+            self.cfg.text_splitter.name,
             self.embeddings_model_name,
-            index_name,
         )
         os.makedirs(self.embeddings_path, exist_ok=True)
-        self.logger.info(f"Embeddings will be saved @ {self.embeddings_path}.")
+        self.logger.info(f"Embeddings will be saved @ {self.embeddings_path}\n")
 
-        self.logger.info("Generating Vector Embeddings")
+        self.logger.info("Generating Vector Embeddings.\n")
 
         vectordb = FAISS.from_documents(
             documents=self.texts, embedding=self.embedding_model
         )
 
-        self.logger.info("Saving Vector Embeddings")
+        self.logger.info("Saving Vector Embeddings.\n")
 
         vectordb.save_local(
             folder_path=self.embeddings_path,
             index_name=self.cfg.embeddings.embed_documents.index_name,
         )
 
-        self.logger.info("Successfully saved.")
+        self.logger.info("Successfully saved.\n")
 
     def generate_vectordb(self) -> FAISS:
-        """Processes documents, generates embeddings, and loads FAISS vector DB.
+        """
+        Processes the documents, generates embeddings, and loads the FAISS vector database.
 
         Returns:
-            FAISS: The loaded FAISS vector store.
+            FAISS: The FAISS vector store containing the embeddings.
         """
         self.logger.info("Starting document processing and generating embeddings.\n")
         self._split_text()
