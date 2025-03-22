@@ -1,7 +1,6 @@
 import locale
 import logging
 import os
-import re
 from typing import Optional
 
 import omegaconf
@@ -20,13 +19,18 @@ from ragas import EvaluationDataset
 
 
 class InferencePipeline:
-    """Pipeline for running retrieval-augmented generation (RAG) inference."""
+    """
+    A pipeline for performing Retrieval-Augmented Generation (RAG) inference.
+
+    This pipeline integrates embedding models, vector databases, retrieval mechanisms,
+    and language models to generate contextually relevant responses.
+    """
 
     def __init__(
         self, cfg: omegaconf.DictConfig, logger: Optional[logging.Logger] = None
     ) -> None:
         """
-        Initializes the inference pipeline.
+        Initializes the inference pipeline with a configuration and optional logger.
 
         Args:
             cfg (omegaconf.DictConfig): Configuration dictionary for the pipeline.
@@ -42,6 +46,7 @@ class InferencePipeline:
         self.qns_list: Optional[list] = None
         self.ans_list: Optional[list] = None
         self.answer_file: Optional[str] = None
+        self.cleaned_text_splitter: Optional[str] = None
 
     def load_embedding_model(self) -> HuggingFaceInstructEmbeddings:
         """
@@ -54,11 +59,10 @@ class InferencePipeline:
             Exception: If the embedding model fails to load.
         """
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        embeddings_model_name = re.sub(
-            r'[<>:"/\\|?*]',
-            "_",
-            self.cfg.embeddings.embeddings_model_name.split("/")[-1],
-        )
+        embeddings_model_name = self.cfg.embeddings.embeddings_path.split("/")[4]
+        self.cleaned_text_splitter = self.cfg.embeddings.embeddings_path.split("/")[
+            3
+        ].replace("_", " ")
 
         self.logger.info(
             f"Loading embedding model, {embeddings_model_name} on {device.upper()}\n"
@@ -66,7 +70,7 @@ class InferencePipeline:
 
         try:
             self.embedding_model = HuggingFaceInstructEmbeddings(
-                model_name=self.cfg.embeddings.embeddings_model_name,
+                model_name="/".join(["sentence-transformers", embeddings_model_name]),
                 show_progress=self.cfg.embeddings.show_progress,
                 model_kwargs={"device": device},
             )
@@ -78,7 +82,7 @@ class InferencePipeline:
             self.logger.error(f"Failed to load embedding model: {e}")
             raise
 
-        return self.embedding_model
+        return self.embedding_model, self.cleaned_text_splitter
 
     def _load_vectordb(self) -> None:
         """
@@ -93,14 +97,15 @@ class InferencePipeline:
                 f"Vector database path does not exist: {self.cfg.embeddings.embeddings_path}"
             )
 
-        index_name = os.path.basename(self.cfg.embeddings.embeddings_path)
-        self.logger.info("Loading Vector database.\n")
+        self.logger.info(
+            f"Loading Vector database @ {self.cfg.embeddings.embeddings_path}.\n"
+        )
 
         try:
             self.vectordb = FAISS.load_local(
                 folder_path=self.cfg.embeddings.embeddings_path,
                 embeddings=self.embedding_model,
-                index_name=index_name,
+                index_name=self.cfg.embeddings.index_name,
                 allow_dangerous_deserialization=True,
             )
             self.logger.info("Vector database loaded successfully.\n")
@@ -113,14 +118,14 @@ class InferencePipeline:
         self, path: str, input_variables: Optional[list] = None
     ) -> PromptTemplate:
         """
-        Loads the prompt template from the specified file path.
+        Loads a prompt template from the specified file path.
 
         Args:
             path (str): Path to the prompt template file.
             input_variables (list, optional): List of input variables. Defaults to None.
 
         Returns:
-            PromptTemplate: The loaded prompt template.
+            PromptTemplate: The loaded prompt template instance.
 
         Raises:
             Exception: If the prompt template file cannot be loaded.
