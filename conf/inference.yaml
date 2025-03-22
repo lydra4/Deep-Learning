@@ -1,6 +1,6 @@
 embeddings:
-  embeddings_path: "./data/embeddings/all-mpnet-base-v2/faiss_index_got"
-  embeddings_model_name: "sentence-transformers/all-mpnet-base-v2"
+  embeddings_path: "./data/embeddings/recursive_character_text_splitter/all-mpnet-base-v2"
+  index_name: faiss_index_got
   show_progress: True
 
 path_to_qa_prompt: "./data/inference/qa_prompt.txt"

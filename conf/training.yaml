@@ -2,4 +2,4 @@ defaults:
   - _self_
   - preprocessing: default
   - embeddings: default
-  - text_splitter: semanticchunker
+  - text_splitter: recursivecharactertextsplitter
