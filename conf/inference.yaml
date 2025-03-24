@@ -1,5 +1,5 @@
 embeddings:
-  embeddings_path: "./data/embeddings/recursive_character_text_splitter/all-mpnet-base-v2"
+  embeddings_path: "./data/embeddings/semantic_chunker/all-MiniLM-L6-v2"
   index_name: faiss_index_got
   show_progress: True
 
