@@ -1,7 +1,7 @@
 seed: 42
 
-path_to_unprocessed_data: "./data/datasets/unprocessed/"
-path_to_processed_data: "./data/datasets/processed/"
+path_to_unprocessed_data: "./data/unprocessed/"
+path_to_processed_data: "./data/processed/"
 
 color_jitter_brightness: 0.5
 color_jitter_contrast: 0.5
