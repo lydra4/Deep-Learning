@@ -1,0 +1,16 @@
+seed: 42
+
+path_to_unprocessed_data: "./data/datasets/unprocessed/"
+path_to_processed_data: "./data/datasets/processed/"
+
+color_jitter_brightness: 0.5
+color_jitter_contrast: 0.5
+color_jitter_saturation: 0.5
+
+kernel_size: 3
+lower_sigma: 1.0
+upper_sigma: 2.0
+
+size: 256
+lower_scale: 0.7
+upper_scale: 1.3
