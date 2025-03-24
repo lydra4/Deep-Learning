@@ -21,7 +21,7 @@ def main(cfg):
 
     """
     logger = logging.getLogger(__name__)
-    logger.info("Setting up logging configuration.")
+    logger.info("Setting up logging configuration.\n")
     setup_logging(
         logging_config_path=os.path.join(
             hydra.utils.get_original_cwd(), "conf", "logging.yaml"
