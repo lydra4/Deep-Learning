@@ -1,0 +1,17 @@
+fastapi
+hydra-core
+matplotlib
+mlflow
+numpy
+pillow
+pylint
+python-json-logger
+python-multipart
+pyyaml
+rich
+ruff
+tqdm
+uvicorn
+
+torch
+torchvision
