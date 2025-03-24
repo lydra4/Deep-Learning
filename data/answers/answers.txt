@@ -1,10 +1,18 @@
-Does Robb Stark Die? - 🛑 "I do not know based on the provided context.".
-Which hand does Jamie Lannister lose? - 🎯 His right hand..
-Does Ned Stark die? - 🛑 "I do not know based on the provided context.".
-Did Renly Baratheon claim the Iron Throne? - Yes..
-Does Sansa Stark marry Tyrion Lannister? - 📝 Yes, based on the context, Tyrion Lannister marries Sansa Stark. The text explicitly states, "you mean to wed me to sansa stark" and then describes Tyrion speaking to Sansa about their duty as they are about to be wed..
+Does Robb Stark Die? - Yes, according to the provided context, Robb Stark dies. The text states, "robb who had been more a brother to theon than any son born of balon greyjoy’s loins. murdered at the red wedding, butchered by the freys" and "ned stark’s sons are all dead, reek thought. robb was murdered at the twins".  These sentences indicate that Robb Stark was murdered at the Red Wedding, also referred to as "the twins", and that the Freys were involved in his butchering..
+Which hand does Jamie Lannister lose? - Based on the context, Jaime Lannister is described as having a "missing hand" (context 1). He is trying to learn to fight with his "left hand" (context 2 and 3). He also mentions that he shifted his sword to his "right hip" to draw it with his "left hand" (context 5).
+
+Therefore, based on the provided text, it can be inferred that Jaime Lannister lost his **right hand** and is now attempting to use his left hand..
+Does Ned Stark die? - Based on the context, yes, Lord Eddard Stark is dead.  Theon states, "lord eddard is dead, beheaded by the lannister queen.".
+Did Renly Baratheon claim the Iron Throne? - Yes, Renly Baratheon was a pretender to the Iron Throne. He is referred to as "rebel lord of storm’s end and pretender to the iron throne" in the provided context..
+Does Sansa Stark marry Tyrion Lannister? - Yes, Sansa Stark marries Tyrion Lannister. Robb states, "they married her to Tyrion Lannister" (Context 2). Catelyn is shocked by this news and recalls that Tyrion had sworn to trade Sansa and Arya for his brother Jaime (Context 3). Robb also mentions that "they made her speak the vows before a septon and don a crimson cloak" (Context 4).  Furthermore, Sansa is directly told, "you are to marry my brother Tyrion" (Context 7). Tyrion is even referred to as potentially bringing "his lovely wife, the lady of winterfell" (Context 8)..
 Was Lysa Arryn pushed through the Moon Door? - 🛑 "I do not know based on the provided context.".
-Does Bronn fight for Tyrion in his trial by combat at the Eyrie? - 🛑 "I do not know based on the provided context.".
-Is Robert Baratheon the father of Joffrey Baratheon? - Based on the provided context, no, Robert Baratheon is not the father of Joffrey Baratheon. The text states, "they are not his sons. stannis told it true, that day he met with renly. joffrey and tommen were never robert’s sons.".
-Does Sandor Clegane have a fear of fire? - **Answer:** Yes, based on the context, Sandor Clegane says "i hate fires"..
-Does Davos Seaworth serve Stannis Baratheon? - Yes. Davos Seaworth is loyal to and serves Stannis Baratheon..
+Does Bronn fight for Tyrion in his trial by combat at the Eyrie? - 🛑 I do not know based on the provided context..
+Is Robert Baratheon the father of Joffrey Baratheon? - Based on the provided context, Stannis Baratheon states bluntly, "joffrey is not my brother’s seed" [context snippet: "joffrey is not my brother’s seed,” stannis said bluntly].  This implies that Robert Baratheon is **not** the father of Joffrey Baratheon..
+Does Sandor Clegane have a fear of fire? - Based on the provided context, it is not explicitly stated whether Sandor Clegane has a fear of fire. However, when observing distant fires, Sandor Clegane says, "only cowards fight with fire" (Context)..
+Does Davos Seaworth serve Stannis Baratheon? - 🎯 Yes, Davos Seaworth serves Stannis Baratheon.
+
+Davos states, "everything i am, i owe to him. Stannis had raised him to knighthood" [Context: "everything i am, i owe to him. stannis had raised him to knighthood"].
+Lord Stannis knighted Davos [Context: "before lord stannis had knighted him, he had been the most notorious and elusive smuggler in all the seven kingdoms"].
+Stannis gave Davos a place of honor, a war galley, and made him hand [Context: "stannis had raised him to knighthood. he had given him a place of honor at his table, a war galley to sail in place of a smuggler’s skiff", "why do you think i made you hand, if not to speak?"].
+Davos addresses Stannis as "your grace" and rides with him [Context: "“your grace.” seen at close hand, stannis looked worse than davos had realized from afar"].
+Stannis asks Davos's opinion on Ser Cortnay Penrose, indicating Stannis values Davos's judgment and counsel [Context: "“a smuggler must be a fair judge of men,” the king said. “what do you make of this ser cortnay penrose?”"]..
