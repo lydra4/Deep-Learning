@@ -16,4 +16,4 @@ metrics:
   context_precision: True
   llm_context_recall: True
   faithfulness: True
-  factual_correctness: True
+  factual_correctness: False
