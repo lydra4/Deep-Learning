@@ -40,13 +40,15 @@ class ImagePipeline:
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
         self.dataset = datasets.ImageFolder(root=self.cfg.path_to_unprocessed_data)
-        self.class_counts = Counter([label for _, label in self.dataset.samples])
+        self.class_counts = Counter(
+            [self.dataset.classes[label] for _, label in self.dataset.samples]
+        )
         self.max_value: Optional[int] = max(self.class_counts.values())
         self.processed_path: Optional[str] = self.cfg.path_to_processed_data
 
     def _get_class_distribution(self) -> None:
         """Calculates the number of images per class in the dataset."""
-        self.logger.info(f"Class distribution: {self.class_counts}")
+        self.logger.info(f"Class distribution: {self.class_counts}.\n")
 
     def _data_augmentation(self, image: Image.Image) -> Image.Image:
         """Performs data augmentation on minority classes to balance the dataset."""
@@ -75,7 +77,7 @@ class ImagePipeline:
     def _augment_and_save(self) -> None:
         class_image_count = Counter()
 
-        self.logger.info(f"Copying images to {self.cfg.path_to_processed_data}.\n")
+        self.logger.info(f"Copying images to {self.cfg.path_to_processed_data}\n")
         for img_path, label in tqdm(self.dataset.samples, desc="Copying Images"):
             class_name = self.dataset.classes[label]
             save_dir = os.path.join(self.cfg.path_to_processed_data, class_name)
@@ -89,7 +91,7 @@ class ImagePipeline:
 
             class_image_count[class_name] += 1
 
-        self.logger.info(f"Copying completed, final count: {dict(class_image_count)}")
+        self.logger.info(f"Copying completed, count: {dict(class_image_count)}\n")
 
     def _balance_minority_class(self) -> None:
         for class_name, count in self.class_counts.items():
@@ -122,7 +124,9 @@ class ImagePipeline:
                     )
                     augmented_image.save(save_path)
 
-            self.logger.info(f"Augmented {class_name} by {num_images_needed} images.")
+                self.logger.info(
+                    f"Augmented {class_name} by {num_images_needed} images.\n"
+                )
 
     def run_pipeline(self) -> None:
         """Runs the entire image processing pipeline: distribution, directory setup, copying, and augmentation."""
