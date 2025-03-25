@@ -1,0 +1,25 @@
+seed: 42
+
+path_to_processed_data: "./data/processed/"
+
+transform_resize: 224
+
+train_ratio: 0.7
+
+batch_size: 32
+
+out_features: 2
+learning_rate: 0.001
+epochs: 100
+
+mlflow_tracking_uri: "./mlflow"
+mlflow_exp_name: "horsesorhumans"
+mlflow_run_name: "convnext"
+setup_mlflow: True
+autolog: True
+
+model: "convnext"
+
+checkpoint_save_path: "./model"
+
+checkpoint_load_path: "./model/model_epoch_95.pth"
