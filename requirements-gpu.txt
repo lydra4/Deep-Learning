@@ -14,6 +14,6 @@ tqdm
 uvicorn
 
 # Install torch, torchvision, and torchaudio from the specified PyTorch index URL
---index-url https://download.pytorch.org/whl/cu126
+--extra-index-url https://download.pytorch.org/whl/cu126
 torch
 torchvision
