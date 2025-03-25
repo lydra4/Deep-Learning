@@ -2,6 +2,7 @@ autoflake
 datasets
 faiss-cpu
 gensim
+gradio
 huggingface-hub==0.25.0
 hydra-core
 InstructorEmbedding==1.0.1
