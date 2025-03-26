@@ -2,7 +2,7 @@ import logging
 import os
 
 import hydra
-from frontend.gradio import GradioApp
+from frontend.gradio_app import GradioApp
 from utils.general_utils import setup_logging
 
 
