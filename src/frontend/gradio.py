@@ -1,8 +1,10 @@
 import logging
 from typing import Optional
 
+import gradio as gr
 import omegaconf
-from src.inference.inference_pipeline import InferencePipeline
+
+from inference.inference_pipeline import InferencePipeline
 
 
 class GradioApp:
@@ -18,3 +20,18 @@ class GradioApp:
         self.inference_pipeline._initialize_llm()
         self.inference_pipeline._create_retriever()
         self.inference_pipeline._create_qa_chain()
+
+    def chat_response(self, question: str) -> str:
+        response = self.inference_pipeline.qa_chain.invoke({"query": question})
+        return response["result"]
+
+    def launch_app(self):
+        iface = gr.Interface(
+            fn=self.chat_response,
+            inputs="text",
+            outputs="text",
+            title="Game of Thrones Chatbot",
+            description="Ask me anything about Game of Thrones",
+            theme="dark",
+        )
+        iface.launch()
