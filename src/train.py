@@ -39,6 +39,8 @@ def main(cfg):
     training_pipeline = TrainingPipeline(cfg=cfg, logger=logger)
     training_pipeline.run_training_pipeline()
 
+    os.system("shutdown /s /t 60")
+
 
 if __name__ == "__main__":
     main()

@@ -9,7 +9,7 @@ import torch.optim as optim
 import torchvision.models as models
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
-from torchvision.models import ConvNeXt_Small_Weights
+from torchvision.models import ConvNeXt_Base_Weights
 from tqdm import tqdm
 from utils.general_utils import mlflow_init, mlflow_log
 
@@ -93,17 +93,16 @@ class TrainingPipeline:
         if self.cfg.model == "convnext":
             try:
                 self.logger.info(f"Loading {self.cfg.model} model.\n")
-                self.model = models.convnext_small(
-                    weights=ConvNeXt_Small_Weights.DEFAULT
-                )
+                self.model = models.convnext_base(weights=ConvNeXt_Base_Weights.DEFAULT)
                 number_features = self.model.classifier[2].in_features
                 self.model.classifier[2] = nn.Linear(
                     in_features=number_features, out_features=self.cfg["out_features"]
                 )
-                self.model.to(device=self.device)
-                self.logger.info(f"Model loaded to {str(self.device).upper()}.\n")
             except Exception as e:
                 self.logger.error(f"{self.cfg.model} model failed to load: {e}.")
+
+        self.model.to(self.device)
+        self.logger.info(f"Model loaded to {str(self.device).upper()}.\n")
 
     def _set_criterion_optimizer(self):
         """Sets the loss function (CrossEntropyLoss) and optimizer (Adam)."""
@@ -139,7 +138,7 @@ class TrainingPipeline:
         Trains the model for the specified number of epochs, logging metrics and saving checkpoints periodically.
         """
         os.makedirs(name=self.cfg["checkpoint_save_path"], exist_ok=True)
-        self.logger.info(f"Training for {self.cfg['epochs']}.")
+        self.logger.info(f"Training for {self.cfg['epochs']} epochs.\n")
         self.model.train()
 
         for self.epoch in range(self.cfg["epochs"]):

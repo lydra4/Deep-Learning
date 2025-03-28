@@ -10,7 +10,7 @@ batch_size: 32
 
 out_features: 2
 learning_rate: 0.001
-epochs: 100
+epochs: 1
 
 mlflow_tracking_uri: "./mlflow"
 mlflow_exp_name: "horsesorhumans"
@@ -20,6 +20,4 @@ autolog: True
 
 model: "convnext"
 
-checkpoint_save_path: "./model"
-
-checkpoint_load_path: "./model/model_epoch_95.pth"
+checkpoint_save_path: "./model/convnext/"
