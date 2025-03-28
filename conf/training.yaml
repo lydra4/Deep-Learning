@@ -10,7 +10,7 @@ batch_size: 32
 
 out_features: 2
 learning_rate: 0.001
-epochs: 1
+epochs: 100
 
 mlflow_tracking_uri: "./mlflow"
 mlflow_exp_name: "horsesorhumans"
