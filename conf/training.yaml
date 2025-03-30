@@ -14,10 +14,10 @@ epochs: 100
 
 mlflow_tracking_uri: "./mlflow"
 mlflow_exp_name: "horsesorhumans"
-mlflow_run_name: "convnext"
+mlflow_run_name: "efficientnet"
 setup_mlflow: True
 autolog: True
 
-model: "convnext"
+model: "efficientnet"
 
-checkpoint_save_path: "./model/convnext/"
+checkpoint_save_path: "./model/efficientnet/"
