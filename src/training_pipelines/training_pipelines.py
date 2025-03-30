@@ -12,7 +12,9 @@ from torchvision import datasets, transforms
 from torchvision.models import (
     ConvNeXt_Small_Weights,
     EfficientNet_B0_Weights,
+    ResNet18_Weights,
     efficientnet_b0,
+    resnet18,
 )
 from tqdm import tqdm
 from utils.general_utils import mlflow_init, mlflow_log
@@ -95,8 +97,8 @@ class TrainingPipeline:
     def _instantiate_model(self):
         """Instantiates the model, replacing the final layer with a custom output layer."""
         try:
+            self.logger.info(f"Loading {self.cfg.model} model.\n")
             if self.cfg.model.lower() == "convnext":
-                self.logger.info(f"Loading {self.cfg.model} model.\n")
                 self.model = models.convnext_small(
                     weights=ConvNeXt_Small_Weights.DEFAULT
                 )
@@ -106,10 +108,16 @@ class TrainingPipeline:
                 )
 
             elif self.cfg.model.lower() == "efficientnet":
-                self.logger.info(f"Loading {self.cfg.model} model.\n")
                 self.model = efficientnet_b0(weights=EfficientNet_B0_Weights)
                 number_features = self.model.classifier[1].in_features
                 self.model.classifier[1] = nn.Linear(
+                    in_features=number_features, out_features=self.cfg.out_features
+                )
+
+            elif self.cfg.model.lower() == "resnet-18":
+                self.model = resnet18(weights=ResNet18_Weights.DEFAULT)
+                number_features = self.model.fc.in_features
+                self.model.fc = nn.Linear(
                     in_features=number_features, out_features=self.cfg.out_features
                 )
 
