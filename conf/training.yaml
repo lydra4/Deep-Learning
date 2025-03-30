@@ -14,10 +14,10 @@ epochs: 100
 
 mlflow_tracking_uri: "./mlflow"
 mlflow_exp_name: "horsesorhumans"
-mlflow_run_name: "efficientnet"
+mlflow_run_name: "resnet-18"
 setup_mlflow: True
 autolog: True
 
-model: "efficientnet"
+model: "resnet-18"
 
-checkpoint_save_path: "./model/efficientnet/"
+checkpoint_save_path: "./model/resnet-18/"
