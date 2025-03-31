@@ -9,7 +9,13 @@ import torch.optim as optim
 import torchvision.models as models
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
-from torchvision.models import ConvNeXt_Small_Weights
+from torchvision.models import (
+    ConvNeXt_Small_Weights,
+    EfficientNet_B0_Weights,
+    ResNet18_Weights,
+    efficientnet_b0,
+    resnet18,
+)
 from tqdm import tqdm
 from utils.general_utils import mlflow_init, mlflow_log
 
@@ -90,18 +96,36 @@ class TrainingPipeline:
 
     def _instantiate_model(self):
         """Instantiates the model, replacing the final layer with a custom output layer."""
-        if self.cfg.model == "convnext":
-            try:
-                self.logger.info(f"Loading {self.cfg.model} model.\n")
+        try:
+            self.logger.info(f"Loading {self.cfg.model} model.\n")
+            if self.cfg.model.lower() == "convnext":
                 self.model = models.convnext_small(
                     weights=ConvNeXt_Small_Weights.DEFAULT
                 )
                 number_features = self.model.classifier[2].in_features
                 self.model.classifier[2] = nn.Linear(
-                    in_features=number_features, out_features=self.cfg["out_features"]
+                    in_features=number_features, out_features=self.cfg.out_features
                 )
-            except Exception as e:
-                self.logger.error(f"{self.cfg.model} model failed to load: {e}.")
+
+            elif self.cfg.model.lower() == "efficientnet":
+                self.model = efficientnet_b0(weights=EfficientNet_B0_Weights)
+                number_features = self.model.classifier[1].in_features
+                self.model.classifier[1] = nn.Linear(
+                    in_features=number_features, out_features=self.cfg.out_features
+                )
+
+            elif self.cfg.model.lower() == "resnet-18":
+                self.model = resnet18(weights=ResNet18_Weights.DEFAULT)
+                number_features = self.model.fc.in_features
+                self.model.fc = nn.Linear(
+                    in_features=number_features, out_features=self.cfg.out_features
+                )
+
+            else:
+                raise ValueError(f"Unsupported model: {self.cfg.model}.")
+
+        except Exception as e:
+            self.logger.error(f"{self.cfg.model} model failed to load: {e}.")
 
         self.model.to(self.device)
         self.logger.info(f"Model loaded to {str(self.device).upper()}.\n")
