@@ -1,10 +1,10 @@
 import logging
 import os
 import random
-from collections import Counter
-from typing import Optional
 import time
+from collections import Counter
 from multiprocessing import Pool, cpu_count
+from typing import Optional
 
 import omegaconf
 from PIL import Image
@@ -75,7 +75,7 @@ class ImagePipeline:
         )
 
         return augment_transforms(img=image)
-    
+
     def _process_image(self, args):
         image_path, label = args
         class_name = self.dataset.classes[label]
@@ -88,7 +88,7 @@ class ImagePipeline:
             save_path = os.path.join(save_dir, os.path.basename(image_path))
             augmented_image.save(save_path)
             return class_name
-        
+
         except Exception as e:
             self.logger.error(f"Error processing {image_path}: {e}.")
             return None
@@ -97,11 +97,25 @@ class ImagePipeline:
         self.logger.info(f"Copying images to {self.cfg.path_to_processed_data}\n")
 
         if self.cfg.use_multiprocessing:
-            with Pool(processes=cpu_count()) as pool:
-                results = list(tqdm(pool.imap(self._process_image, self.dataset.samples), total=len(self.dataset.samples), desc="Copying Images"))
+            num_workers = cpu_count()
+            self.logger.info(
+                f"Using multiprocess with {num_workers} workers for copying.\n"
+            )
+            with Pool(processes=num_workers) as pool:
+                results = list(
+                    tqdm(
+                        pool.imap(self._process_image, self.dataset.samples),
+                        total=len(self.dataset.samples),
+                        desc="Copying Images",
+                    )
+                )
 
         else:
-            results = [self._process_image(sample) for sample in tqdm(self.dataset.samples, desc="Copying Images")]
+            self.logger.info("Running on a single processor.\n")
+            results = [
+                self._process_image(sample)
+                for sample in tqdm(self.dataset.samples, desc="Copying Images")
+            ]
 
         class_image_count = Counter(filter(None, results))
         self.logger.info(f"Copying completed, count: {dict(class_image_count)}\n")
@@ -113,15 +127,18 @@ class ImagePipeline:
             original_image = Image.open(image_path).convert("RGB")
             augmented_image = self._data_augmentation(image=original_image)
 
-            filename_wo_extension, extension = os.path.splitext(os.path.basename(image_path))
-            save_path = os.path.join(save_dir, f"{filename_wo_extension}_aug_{i}.{extension}")
+            filename_wo_extension, extension = os.path.splitext(
+                os.path.basename(image_path)
+            )
+            save_path = os.path.join(
+                save_dir, f"{filename_wo_extension}_aug_{i}.{extension}"
+            )
             augmented_image.save(save_path)
             return class_name
-        
+
         except Exception as e:
             self.logger.error(f"Error augmented {image_path}: {e}.")
             return None
-
 
     def _balance_minority_class(self) -> None:
         tasks = []
@@ -145,11 +162,25 @@ class ImagePipeline:
                     tasks.append((image_path, save_dir, class_name, i))
 
         if self.cfg.use_multiprocessing:
-            with Pool(processes=cpu_count()) as pool:
-                results = list(tqdm(pool.imap(self._process_augmentation, tasks), total=len(tasks), desc="Augmented Images"))
+            num_workers = cpu_count()
+            self.logger.info(
+                f"Using multiprocess with {num_workers} workers for augmentation.\n"
+            )
+            with Pool(processes=num_workers) as pool:
+                results = list(
+                    tqdm(
+                        pool.imap(self._process_augmentation, tasks),
+                        total=len(tasks),
+                        desc="Augmented Images",
+                    )
+                )
 
         else:
-            results = [self._process_augmentation(task) for task in tqdm(tasks, desc="Augmented Images")]
+            self.logger.info("Running augmentation on a single processor.\n")
+            results = [
+                self._process_augmentation(task)
+                for task in tqdm(tasks, desc="Augmented Images")
+            ]
 
         class_image_count = Counter(filter(None, results))
         self.logger.info(f"Augmentation completed: {dict(class_image_count)}.\n")
@@ -164,4 +195,10 @@ class ImagePipeline:
 
         end_time = time.time()
         elapsed_time = end_time - start_time
-        self.logger.info(f"Data processing took {elapsed_time:.6f} seconds.\n")
+
+        if self.cfg.use_multiprocessing:
+            self.logger.info(
+                f"Data processing took {elapsed_time:.6f} seconds using multiprocessing.\n"
+            )
+        else:
+            self.logger.info(f"Data processing took {elapsed_time:.6f} seconds.\n")
