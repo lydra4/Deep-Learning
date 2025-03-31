@@ -3,6 +3,8 @@ import os
 import random
 from collections import Counter
 from typing import Optional
+import time
+from multiprocessing import Pool, cpu_count
 
 import omegaconf
 from PIL import Image
@@ -73,27 +75,57 @@ class ImagePipeline:
         )
 
         return augment_transforms(img=image)
+    
+    def _process_image(self, args):
+        image_path, label = args
+        class_name = self.dataset.classes[label]
+        save_dir = os.path.join(self.cfg.path_to_processed_data, class_name)
+        os.makedirs(name=save_dir, exist_ok=True)
+
+        try:
+            image = Image.open(image_path).convert("RGB")
+            augmented_image = self._data_augmentation(image=image)
+            save_path = os.path.join(save_dir, os.path.basename(image_path))
+            augmented_image.save(save_path)
+            return class_name
+        
+        except Exception as e:
+            self.logger.error(f"Error processing {image_path}: {e}.")
+            return None
 
     def _augment_and_save(self) -> None:
-        class_image_count = Counter()
-
         self.logger.info(f"Copying images to {self.cfg.path_to_processed_data}\n")
-        for img_path, label in tqdm(self.dataset.samples, desc="Copying Images"):
-            class_name = self.dataset.classes[label]
-            save_dir = os.path.join(self.cfg.path_to_processed_data, class_name)
-            os.makedirs(name=save_dir, exist_ok=True)
 
-            image = Image.open(img_path).convert("RGB")
-            augmented_image = self._data_augmentation(image=image)
+        if self.cfg.use_multiprocessing:
+            with Pool(processes=cpu_count()) as pool:
+                results = list(tqdm(pool.imap(self._process_image, self.dataset.samples), total=len(self.dataset.samples), desc="Copying Images"))
 
-            save_path = os.path.join(save_dir, os.path.basename(img_path))
-            augmented_image.save(save_path)
+        else:
+            results = [self._process_image(sample) for sample in tqdm(self.dataset.samples, desc="Copying Images")]
 
-            class_image_count[class_name] += 1
-
+        class_image_count = Counter(filter(None, results))
         self.logger.info(f"Copying completed, count: {dict(class_image_count)}\n")
 
+    def _process_augmentation(self, args):
+        image_path, save_dir, class_name, i = args
+
+        try:
+            original_image = Image.open(image_path).convert("RGB")
+            augmented_image = self._data_augmentation(image=original_image)
+
+            filename_wo_extension, extension = os.path.splitext(os.path.basename(image_path))
+            save_path = os.path.join(save_dir, f"{filename_wo_extension}_aug_{i}.{extension}")
+            augmented_image.save(save_path)
+            return class_name
+        
+        except Exception as e:
+            self.logger.error(f"Error augmented {image_path}: {e}.")
+            return None
+
+
     def _balance_minority_class(self) -> None:
+        tasks = []
+
         for class_name, count in self.class_counts.items():
             if count < self.max_value:
                 self.logger.info(f"Augmenting {class_name} class.\n")
@@ -109,27 +141,27 @@ class ImagePipeline:
 
                 selected_paths = random.choices(image_paths, k=num_images_needed)
 
-                for i, img_path in enumerate(
-                    tqdm(selected_paths, desc="Augmenting Images"), start=1
-                ):
-                    original_image = Image.open(img_path).convert("RGB")
-                    augmented_image = self._data_augmentation(image=original_image)
+                for i, image_path in enumerate(selected_paths, start=1):
+                    tasks.append((image_path, save_dir, class_name, i))
 
-                    filename_wo_extension, extension = os.path.splitext(
-                        os.path.basename(img_path)
-                    )
+        if self.cfg.use_multiprocessing:
+            with Pool(processes=cpu_count()) as pool:
+                results = list(tqdm(pool.imap(self._process_augmentation, tasks), total=len(tasks), desc="Augmented Images"))
 
-                    save_path = os.path.join(
-                        save_dir, f"{filename_wo_extension}_aug_{i}.{extension}"
-                    )
-                    augmented_image.save(save_path)
+        else:
+            results = [self._process_augmentation(task) for task in tqdm(tasks, desc="Augmented Images")]
 
-                self.logger.info(
-                    f"Augmented {class_name} by {num_images_needed} images.\n"
-                )
+        class_image_count = Counter(filter(None, results))
+        self.logger.info(f"Augmentation completed: {dict(class_image_count)}.\n")
 
     def run_pipeline(self) -> None:
         """Runs the entire image processing pipeline: distribution, directory setup, copying, and augmentation."""
+        start_time = time.time()
+
         self._get_class_distribution()
         self._augment_and_save()
         self._balance_minority_class()
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        self.logger.info(f"Data processing took {elapsed_time:.6f} seconds.\n")
