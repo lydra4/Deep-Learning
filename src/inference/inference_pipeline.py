@@ -15,6 +15,9 @@ from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai.chat_models import ChatOpenAI
+from langfuse import Langfuse
+from langfuse.callback import CallbackHandler
+from langfuse.decorators import observe
 from ragas import EvaluationDataset
 
 
@@ -38,6 +41,15 @@ class InferencePipeline:
         """
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
+
+        load_dotenv()
+        self.langfuse = Langfuse(
+            secret_key=os.getenv("langfuse_secret_key"),
+            public_key=os.getenv("langfuse_public_key"),
+            host=os.getenv("host"),
+        )
+        self.langfuse_handler = CallbackHandler()
+
         self.embedding_model: Optional[HuggingFaceInstructEmbeddings] = None
         self.vectordb: Optional[FAISS] = None
         self.llm: Optional[ChatOpenAI] = None
@@ -48,6 +60,7 @@ class InferencePipeline:
         self.answer_file: Optional[str] = None
         self.cleaned_text_splitter: Optional[str] = None
 
+    @observe
     def load_embedding_model(self) -> HuggingFaceInstructEmbeddings:
         """
         Loads the embedding model specified in the configuration.
@@ -305,7 +318,9 @@ class InferencePipeline:
             newline="\n",
         ) as self.answer_file:
             for question, ground_truth in zip(self.qns_list, self.ground_truth):
-                retrieved_docs = self.retriever.invoke(input=question)
+                retrieved_docs = self.retriever.invoke(
+                    input=question, config={"callbacks": [self.langfuse_handler]}
+                )
 
                 for document in retrieved_docs:
                     document.page_content = document.page_content[
