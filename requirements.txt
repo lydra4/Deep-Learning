@@ -21,6 +21,7 @@ numpy
 pandas
 psutil
 pyarrow
+pydantic==2.10.6
 pyLDAvis
 pylint
 python-json-logger
