@@ -40,8 +40,13 @@ class GradioApp:
             )
 
             def respond(history, question):
-                return self.chat_response(history=history, question=question)
+                updated_history, _ = self.chat_response(
+                    history=history, question=question
+                )
+                return updated_history
 
-            user_input.submit(respond, [chatbot, user_input], [chatbot, user_input])
+            user_input.submit(respond, [chatbot, user_input], [chatbot]).then(
+                lambda: "", [], [user_input]
+            )
 
         demo.launch()
