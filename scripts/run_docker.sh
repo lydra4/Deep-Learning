@@ -1,1 +1,1 @@
-docker run --env-file src/.env gotchatbot
+docker run -p 7860:7860 gotchatbot
