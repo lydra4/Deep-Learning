@@ -17,7 +17,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai.chat_models import ChatOpenAI
 from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
-from langfuse.decorators import observe
 from ragas import EvaluationDataset
 
 
@@ -60,7 +59,6 @@ class InferencePipeline:
         self.answer_file: Optional[str] = None
         self.cleaned_text_splitter: Optional[str] = None
 
-    @observe
     def load_embedding_model(self) -> HuggingFaceInstructEmbeddings:
         """
         Loads the embedding model specified in the configuration.
@@ -328,7 +326,8 @@ class InferencePipeline:
                     ]
 
                 llm_response = self.qa_chain.invoke(
-                    {"query": question, "context": retrieved_docs}
+                    {"query": question, "context": retrieved_docs},
+                    config={"callbacks": [self.langfuse_handler]},
                 )
 
                 self.logger.info(f"\nQuestion: {question}")
