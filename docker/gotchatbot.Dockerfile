@@ -28,5 +28,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_GID} ${REPO_DIR} .
 
+# Copy the .env file into the container
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_GID} src/.env ${HOME_DIR}/${REPO_DIR}/.env
+
 # Default command
 CMD ["python", "src/app.py"]
