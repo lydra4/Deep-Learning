@@ -4,6 +4,7 @@ import os
 import hydra
 import omegaconf
 import torch
+from inference.inference_pipeline import InferencePipeline
 from utils.general_utils import setup_logging
 from utils.seed_utils import fix_seed
 
@@ -27,3 +28,5 @@ def main(cfg: omegaconf.DictConfig):
     else:
         device = torch.device(f"cuda:{cfg.environ.device}")
     logger.info(f"Device set to {device} for inference.\n")
+
+    inference_pipeline = InferencePipeline(cfg=cfg, logger=logger, device=device)
