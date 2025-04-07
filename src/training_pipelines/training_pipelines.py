@@ -21,17 +21,21 @@ from utils.general_utils import mlflow_init, mlflow_log
 
 
 class TrainingPipeline:
-    """Handles the entire training pipeline including dataset loading, model training, and MLflow logging."""
+    """Training pipeline for image classification using PyTorch.
+
+    This class handles loading datasets, initializing models, training,
+    evaluation, and logging with MLflow.
+    """
 
     def __init__(
         self, cfg: dict, logger: Optional[logging.Logger], device: torch.device
     ):
-        """
-        Initializes the training pipeline with the provided configuration and logger.
+        """Initializes the TrainingPipeline.
 
         Args:
-            cfg (dict): Configuration dictionary containing necessary parameters for training.
-            logger (Optional[logging.Logger]): Logger object for logging training information. If None, a default logger is used.
+            cfg (dict): Configuration dictionary with model, dataset, training, and MLflow parameters.
+            logger (Optional[logging.Logger]): Logger instance for logging messages. If None, a default logger is created.
+            device (torch.device): Torch device to use for model training (CPU or GPU).
         """
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
@@ -47,7 +51,11 @@ class TrainingPipeline:
         self.epoch = None
 
     def _load_dataset(self):
-        """Loads and transforms the dataset from the specified directory."""
+        """Loads and applies transforms to the image dataset.
+
+        Loads the dataset using torchvision's ImageFolder from the
+        `path_to_processed_data` and applies resizing and tensor conversion.
+        """
         transform = transforms.Compose(
             [
                 transforms.Resize(
@@ -69,11 +77,12 @@ class TrainingPipeline:
         )
 
     def _split_dataset(self):
-        """
-        Splits the dataset into training and testing sets based on the train ratio.
+        """Splits the dataset into training and testing sets.
+
+        Splits the dataset into training and test loaders using a specified train ratio.
 
         Returns:
-            tuple: A tuple containing the train DataLoader and test DataLoader.
+            tuple: Tuple of DataLoaders (train_loader, test_loader).
         """
         train_size = int(self.cfg["train_ratio"] * len(self.dataset))
         test_size = len(self.dataset) - train_size
@@ -99,7 +108,14 @@ class TrainingPipeline:
         )
 
     def _instantiate_model(self):
-        """Instantiates the model, replacing the final layer with a custom output layer."""
+        """Initializes the model based on the specified architecture.
+
+        Supports ConvNeXt, EfficientNet-B0, and ResNet-18. Replaces the final classification layer
+        with one compatible with the number of output classes defined in config.
+
+        Raises:
+            ValueError: If an unsupported model name is provided in the configuration.
+        """
         try:
             self.logger.info(f"Loading {self.cfg.model} model.\n")
             if self.cfg.model.lower() == "convnext":
@@ -135,17 +151,19 @@ class TrainingPipeline:
         self.logger.info(f"Model loaded to {str(self.device).upper()}.\n")
 
     def _set_criterion_optimizer(self):
-        """Sets the loss function (CrossEntropyLoss) and optimizer (Adam)."""
+        """Sets the loss function and optimizer.
+
+        Uses CrossEntropyLoss and the Adam optimizer with a learning rate from the config.
+        """
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.Adam(
             params=self.model.parameters(), lr=self.cfg["learning_rate"]
         )
 
     def _setup_mlflow(self):
-        """
-        Initializes MLflow with the configuration provided in the setup.
+        """Initializes MLflow for experiment tracking.
 
-        Logs whether the MLflow initialization was successful.
+        Calls the `mlflow_init` utility function to setup MLflow run and logs the status.
         """
         mlflow_args = {
             "mlflow_tracking_uri": self.cfg.environ.mlflow.mlflow_tracking_uri,
@@ -164,8 +182,10 @@ class TrainingPipeline:
             self.logger.error("MLflow initialization failed.")
 
     def _train_model(self):
-        """
-        Trains the model for the specified number of epochs, logging metrics and saving checkpoints periodically.
+        """Trains the model over a number of epochs.
+
+        For each epoch, computes training loss and accuracy, logs metrics to MLflow,
+        and saves checkpoints periodically.
         """
         os.makedirs(name=self.cfg["checkpoint_save_path"], exist_ok=True)
         self.logger.info(f"Training for {self.cfg['epochs']} epochs.\n")
@@ -216,10 +236,10 @@ class TrainingPipeline:
             )
 
     def _save_checkpoint(self):
-        """
-        Saves the model checkpoint after each epoch.
+        """Saves model checkpoints to disk.
 
-        The checkpoint is saved in the directory specified by `checkpoint_save_path`.
+        Saves the model’s state_dict to the directory defined in `checkpoint_save_path`
+        under a subfolder named after the model.
         """
         os.makedirs(
             name=os.path.join(self.cfg.checkpoint_save_path, self.cfg.model),
