@@ -23,7 +23,9 @@ from utils.general_utils import mlflow_init, mlflow_log
 class TrainingPipeline:
     """Handles the entire training pipeline including dataset loading, model training, and MLflow logging."""
 
-    def __init__(self, cfg: dict, logger: Optional[logging.Logger]):
+    def __init__(
+        self, cfg: dict, logger: Optional[logging.Logger], device: torch.device
+    ):
         """
         Initializes the training pipeline with the provided configuration and logger.
 
@@ -33,6 +35,7 @@ class TrainingPipeline:
         """
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
+        self.device = device
         self.dataset = None
         self.train_loader = None
         self.test_loader = None
@@ -41,7 +44,6 @@ class TrainingPipeline:
         self.optimizer = None
         self.mlflow_init_status = None
         self.mlflow_run = None
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.epoch = None
 
     def _load_dataset(self):
@@ -55,9 +57,11 @@ class TrainingPipeline:
             ]
         )
 
-        self.logger.info(f"Loading dataset from {self.cfg['path_to_processed_data']}")
+        self.logger.info(
+            f"Loading dataset from {self.cfg.environ.path_to_processed_data}.\n"
+        )
         self.dataset = datasets.ImageFolder(
-            root=self.cfg["path_to_processed_data"], transform=transform
+            root=self.cfg.environ.path_to_processed_data, transform=transform
         )
         self.logger.info("Successfully loaded dataset.")
         self.logger.info(
@@ -80,7 +84,7 @@ class TrainingPipeline:
         train_dataset, test_dataset = random_split(
             dataset=self.dataset,
             lengths=[train_size, test_size],
-            generator=torch.Generator().manual_seed(self.cfg["seed"]),
+            generator=torch.Generator().manual_seed(self.cfg.environ.seed),
         )
 
         self.train_loader = DataLoader(
@@ -144,15 +148,15 @@ class TrainingPipeline:
         Logs whether the MLflow initialization was successful.
         """
         mlflow_args = {
-            "mlflow_tracking_uri": self.cfg["mlflow_tracking_uri"],
-            "mlflow_exp_name": self.cfg["mlflow_exp_name"],
-            "mlflow_run_name": self.cfg["mlflow_run_name"],
+            "mlflow_tracking_uri": self.cfg.environ.mlflow.mlflow_tracking_uri,
+            "mlflow_exp_name": self.cfg.environ.mlflow.mlflow_exp_name,
+            "mlflow_run_name": self.cfg.model,
         }
         self.mlflow_init_status, self.mlflow_run = mlflow_init(
             args=mlflow_args,
-            run_name=self.cfg["mlflow_run_name"],
-            setup_mlflow=self.cfg["setup_mlflow"],
-            autolog=self.cfg["autolog"],
+            run_name=self.cfg.model,
+            setup_mlflow=self.cfg.environ.mlflow.setup_mlflow,
+            autolog=self.cfg.environ.mlflow.autolog,
         )
         if self.mlflow_init_status:
             self.logger.info("MLflow initialized")
@@ -217,77 +221,17 @@ class TrainingPipeline:
 
         The checkpoint is saved in the directory specified by `checkpoint_save_path`.
         """
+        os.makedirs(
+            name=os.path.join(self.cfg.checkpoint_save_path, self.cfg.model),
+            exist_ok=True,
+        )
         checkpoint_path = os.path.join(
-            self.cfg["checkpoint_save_path"], f"model_epoch_{self.epoch + 1}.pth"
+            self.cfg.checkpoint_save_path,
+            self.cfg.model,
+            f"model_epoch_{self.epoch + 1}.pth",
         )
         torch.save(self.model.state_dict(), checkpoint_path)
         self.logger.info(f"Checkpoint saved: {checkpoint_path}")
-
-    def _load_checkpoint(self):
-        """
-        Loads the model checkpoint from the specified path in the configuration.
-
-        This method checks if the checkpoint file exists at the given path. If the file is found,
-        it loads the model state dictionary from the checkpoint and moves the model to the specified device.
-
-        If the checkpoint is not found, an error is logged.
-
-        Attributes:
-            cfg (dict): Configuration dictionary containing the checkpoint load path.
-            logger (logging.Logger): Logger instance to log information and errors.
-            model (torch.nn.Module): The PyTorch model to load the state dictionary into.
-            device (torch.device): The device to which the model is moved (e.g., CPU or GPU).
-        """
-        if not os.path.exists(self.cfg["checkpoint_load_path"]):
-            self.logger.error(
-                f"Checkpoint not found at {self.cfg['checkpoint_load_path']}"
-            )
-            return
-
-        self.model.load_state_dict(
-            torch.load(self.cfg["checkpoint_load_path"], map_location=self.device)
-        )
-        self.model.to(self.device)
-        self.logger.info(f"Loaded checkpoint: {self.cfg['checkpoint_load_path']}")
-
-    def evaluate_model(self):
-        """
-        Evaluates the model on the test dataset and logs the accuracy.
-
-        This method loads the test dataset, splits it, instantiates the model, and loads the checkpoint.
-        It then switches the model to evaluation mode, performs inference on the test data,
-        and calculates the accuracy by comparing the predicted and actual labels.
-
-        Logs the accuracy of the model after evaluation.
-
-        Attributes:
-            test_loader (torch.utils.data.DataLoader): DataLoader for the test dataset.
-            model (torch.nn.Module): The PyTorch model to evaluate.
-            device (torch.device): The device to perform the evaluation on (e.g., CPU or GPU).
-            logger (logging.Logger): Logger instance to log evaluation results.
-        """
-        self._load_dataset()
-        self._split_dataset()
-        self._instantiate_model()
-        self._load_checkpoint()
-
-        self.model.eval()
-
-        correct = 0
-        total = 0
-
-        with torch.no_grad():
-            for images, labels in tqdm(
-                self.test_loader, desc="Evaluating", unit="Images"
-            ):
-                images, labels = images.to(self.device), labels.to(self.device)
-                outputs = self.model(images)
-                _, predicted = torch.max(outputs, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-
-        accuracy = 100 * correct / total
-        self.logger.info(f"Test Accuracy: {accuracy:.2f}%")
 
     def run_training_pipeline(self):
         """
