@@ -2,6 +2,7 @@ import logging
 import os
 
 import hydra
+import torch
 from training_pipelines.training_pipelines import TrainingPipeline
 from utils.general_utils import setup_logging
 from utils.seed_utils import fix_seed
@@ -33,13 +34,18 @@ def main(cfg):
         )
     )
 
-    fix_seed(seed=cfg["seed"])
-    logger.info(f"Seed fixed at {cfg['seed']}.\n")
+    if cfg.environ.seed:
+        fix_seed(seed=cfg.environ.seed)
+        logger.info(f"Seed fixed at {cfg.environ.seed}.\n")
 
-    training_pipeline = TrainingPipeline(cfg=cfg, logger=logger)
+    if cfg.environ.device < 0:
+        device = torch.device("cpu")
+    else:
+        device = torch.device(f"cuda:{cfg.environ.device}")
+    logger.info(f"Device set to {device}.\n")
+
+    training_pipeline = TrainingPipeline(cfg=cfg, logger=logger, device=device)
     training_pipeline.run_training_pipeline()
-
-    os.system("shutdown /s /t 60")
 
 
 if __name__ == "__main__":
