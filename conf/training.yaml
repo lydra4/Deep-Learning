@@ -1,3 +1,7 @@
+defaults:
+  - _self_
+  - environ: default
+
 transform_resize: 224
 
 train_ratio: 0.7
@@ -10,4 +14,4 @@ epochs: 100
 
 model: "resnet-18"
 
-checkpoint_save_path: "./model/resnet-18/"
+checkpoint_save_path: "./model"

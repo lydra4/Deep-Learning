@@ -7,6 +7,5 @@ path_to_processed_data: "./data/processed/"
 mlflow:
   mlflow_tracking_uri: "./mlflow"
   mlflow_exp_name: "horsesorhumans"
-  mlflow_run_name: "resnet-18"
   setup_mlflow: True
   autolog: True
