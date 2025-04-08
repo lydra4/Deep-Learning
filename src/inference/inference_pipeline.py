@@ -68,4 +68,4 @@ class InferencePipeline(TrainingPipeline):
             self.model.to(self.device)
             self.model.eval()
 
-        def _inference(self, data_loader: torch.utils.data.DataLoader) -> None:
+        def _run_inference(self, data_loader: torch.utils.data.DataLoader) -> None:
