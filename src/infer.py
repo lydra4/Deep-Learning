@@ -11,6 +11,7 @@ from utils.seed_utils import fix_seed
 
 @hydra.main(version_base=None, config_path="../conf", config_name="inference.yaml")
 def main(cfg: omegaconf.DictConfig):
+    print(cfg)
     logger = logging.getLogger(__name__)
     logger.info("Setting up logging configuration.\n")
     setup_logging(
@@ -20,7 +21,7 @@ def main(cfg: omegaconf.DictConfig):
     )
 
     if cfg.environ.seed:
-        logger.info(f"Random set to {cfg.environ.seed}.\n")
+        logger.info(f"Random seed set to {cfg.environ.seed}.\n")
         fix_seed(seed=cfg.environ.seed)
 
     if cfg.environ.device < 0:
@@ -30,3 +31,8 @@ def main(cfg: omegaconf.DictConfig):
     logger.info(f"Device set to {device} for inference.\n")
 
     inference_pipeline = InferencePipeline(cfg=cfg, logger=logger, device=device)
+    inference_pipeline.perform_inference()
+
+
+if __name__ == "__main__":
+    main()
