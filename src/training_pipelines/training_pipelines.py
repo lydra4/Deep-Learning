@@ -21,19 +21,34 @@ from utils.general_utils import mlflow_init, mlflow_log
 
 
 class TrainingPipeline:
-    """Training pipeline for image classification using PyTorch.
+    """
+    A training pipeline for image classification using PyTorch.
 
-    This class handles loading datasets, initializing models, training,
-    evaluation, and logging with MLflow.
+    This class handles loading datasets, initializing models, training, evaluation, and logging with MLflow.
+
+    Attributes:
+        cfg (dict): Configuration dictionary containing model, dataset, training, and MLflow parameters.
+        logger (Optional[logging.Logger]): Logger instance for logging messages.
+        device (torch.device): The device (CPU or GPU) to use for model training.
+        dataset (Optional[Dataset]): Dataset object for image data.
+        train_loader (Optional[DataLoader]): DataLoader for training data.
+        test_loader (Optional[DataLoader]): DataLoader for test data.
+        model (Optional[nn.Module]): Model to be trained.
+        criterion (Optional[nn.Module]): Loss function used in training.
+        optimizer (Optional[optim.Optimizer]): Optimizer used for training.
+        mlflow_init_status (Optional[bool]): Status of MLflow initialization.
+        mlflow_run (Optional[mlflow.ActiveRun]): MLflow run object.
+        epoch (Optional[int]): Current epoch in the training process.
     """
 
     def __init__(
         self, cfg: dict, logger: Optional[logging.Logger], device: torch.device
     ):
-        """Initializes the TrainingPipeline.
+        """
+        Initializes the TrainingPipeline.
 
         Args:
-            cfg (dict): Configuration dictionary with model, dataset, training, and MLflow parameters.
+            cfg (dict): Configuration dictionary containing model, dataset, training, and MLflow parameters.
             logger (Optional[logging.Logger]): Logger instance for logging messages. If None, a default logger is created.
             device (torch.device): Torch device to use for model training (CPU or GPU).
         """
@@ -51,10 +66,13 @@ class TrainingPipeline:
         self.epoch = None
 
     def _load_dataset(self):
-        """Loads and applies transforms to the image dataset.
+        """
+        Loads and applies transformations to the image dataset.
 
-        Loads the dataset using torchvision's ImageFolder from the
-        `path_to_processed_data` and applies resizing and tensor conversion.
+        Loads the dataset using torchvision's ImageFolder from the `path_to_processed_data` and applies
+        resizing and tensor conversion.
+
+        Logs dataset loading information and class-to-index mapping.
         """
         transform = transforms.Compose(
             [
@@ -77,12 +95,13 @@ class TrainingPipeline:
         )
 
     def _split_dataset(self):
-        """Splits the dataset into training and testing sets.
+        """
+        Splits the dataset into training and testing sets.
 
         Splits the dataset into training and test loaders using a specified train ratio.
 
         Returns:
-            tuple: Tuple of DataLoaders (train_loader, test_loader).
+            tuple: A tuple of DataLoaders (train_loader, test_loader).
         """
         train_size = int(self.cfg["train_ratio"] * len(self.dataset))
         test_size = len(self.dataset) - train_size
@@ -108,10 +127,11 @@ class TrainingPipeline:
         )
 
     def _instantiate_model(self):
-        """Initializes the model based on the specified architecture.
+        """
+        Initializes the model based on the specified architecture.
 
         Supports ConvNeXt, EfficientNet-B0, and ResNet-18. Replaces the final classification layer
-        with one compatible with the number of output classes defined in config.
+        with one compatible with the number of output classes defined in the config.
 
         Raises:
             ValueError: If an unsupported model name is provided in the configuration.
@@ -151,7 +171,8 @@ class TrainingPipeline:
         self.logger.info(f"Model loaded to {str(self.device).upper()}.\n")
 
     def _set_criterion_optimizer(self):
-        """Sets the loss function and optimizer.
+        """
+        Sets the loss function and optimizer.
 
         Uses CrossEntropyLoss and the Adam optimizer with a learning rate from the config.
         """
@@ -161,9 +182,10 @@ class TrainingPipeline:
         )
 
     def _setup_mlflow(self):
-        """Initializes MLflow for experiment tracking.
+        """
+        Initializes MLflow for experiment tracking.
 
-        Calls the `mlflow_init` utility function to setup MLflow run and logs the status.
+        Calls the `mlflow_init` utility function to setup the MLflow run and logs the status.
         """
         mlflow_args = {
             "mlflow_tracking_uri": self.cfg.environ.mlflow.mlflow_tracking_uri,
@@ -182,12 +204,16 @@ class TrainingPipeline:
             self.logger.error("MLflow initialization failed.")
 
     def _train_model(self):
-        """Trains the model over a number of epochs.
+        """
+        Trains the model over a number of epochs.
 
         For each epoch, computes training loss and accuracy, logs metrics to MLflow,
         and saves checkpoints periodically.
         """
-        os.makedirs(name=self.cfg["checkpoint_save_path"], exist_ok=True)
+        os.makedirs(
+            name=os.path.join(self.cfg.checkpoint_save_path, self.cfg.model),
+            exist_ok=True,
+        )
         self.logger.info(f"Training for {self.cfg['epochs']} epochs.\n")
         self.model.train()
 
@@ -236,15 +262,12 @@ class TrainingPipeline:
             )
 
     def _save_checkpoint(self):
-        """Saves model checkpoints to disk.
+        """
+        Saves model checkpoints to disk.
 
         Saves the model’s state_dict to the directory defined in `checkpoint_save_path`
         under a subfolder named after the model.
         """
-        os.makedirs(
-            name=os.path.join(self.cfg.checkpoint_save_path, self.cfg.model),
-            exist_ok=True,
-        )
         checkpoint_path = os.path.join(
             self.cfg.checkpoint_save_path,
             self.cfg.model,
@@ -257,7 +280,7 @@ class TrainingPipeline:
         """
         Runs the entire training pipeline, including dataset loading, model training, and MLflow logging.
 
-        This method orchestrates the following:
+        This method orchestrates the following steps:
         1. Loading the dataset
         2. Splitting the dataset
         3. Instantiating the model
