@@ -1,6 +1,6 @@
 defaults:
-  - _self_
   - environ: default
+  - _self_
 
 transform_resize: 224
 
