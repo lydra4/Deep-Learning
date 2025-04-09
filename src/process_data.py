@@ -21,14 +21,16 @@ def main(cfg):
 
     """
     logger = logging.getLogger(__name__)
-    logger.info("Setting up logging configuration.\n")
+    logger.info("\nSetting up logging configuration.\n")
     setup_logging(
         logging_config_path=os.path.join(
             hydra.utils.get_original_cwd(), "conf", "logging.yaml"
         )
     )
-    fix_seed(seed=cfg["seed"])
-    logger.info(f"Seed fixed at {cfg['seed']}\n")
+    if cfg.environ.seed:
+        fix_seed(seed=cfg.environ.seed)
+        logger.info(f"Seed fixed at {cfg.environ.seed}\n")
+
     image_pipeline = ImagePipeline(cfg=cfg, logger=logger)
     image_pipeline.run_pipeline()
 
