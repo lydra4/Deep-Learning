@@ -1,9 +1,14 @@
-seed: 42
+defaults:
+  - environ: default
+  - _self_
 
-use_multiprocessing: False
+use_multiprocessing: True
 
 path_to_unprocessed_data: "./data/unprocessed/"
 path_to_processed_data: "./data/processed/"
+
+test_val_images: 100
+train_images: 2000
 
 color_jitter_brightness: 0.5
 color_jitter_contrast: 0.5
@@ -16,3 +21,5 @@ upper_sigma: 2.0
 size: 256
 lower_scale: 0.7
 upper_scale: 1.3
+
+random_horizontal_flip: 0.5
