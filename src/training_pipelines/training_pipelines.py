@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from typing import Optional
@@ -7,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.models as models
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torchvision.models import (
     ConvNeXt_Small_Weights,
@@ -55,9 +54,9 @@ class TrainingPipeline:
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
         self.device = device
-        self.dataset = None
-        self.train_loader = None
-        self.test_loader = None
+        self.train_loader: Optional[DataLoader] = None
+        self.val_loader: Optional[DataLoader] = None
+        self.test_loader: Optional[DataLoader] = None
         self.model = None
         self.criterion = None
         self.optimizer = None
@@ -65,7 +64,7 @@ class TrainingPipeline:
         self.mlflow_run = None
         self.epoch = None
 
-    def _load_dataset(self):
+    def _load_dataset_from_folder(self):
         """
         Loads and applies transformations to the image dataset.
 
@@ -86,45 +85,35 @@ class TrainingPipeline:
         self.logger.info(
             f"Loading dataset from {self.cfg.environ.path_to_processed_data}.\n"
         )
-        self.dataset = datasets.ImageFolder(
-            root=self.cfg.environ.path_to_processed_data, transform=transform
-        )
-        self.logger.info("Successfully loaded dataset.")
-        self.logger.info(
-            f"Class to Index Mapping: {json.dumps(self.dataset.class_to_idx, indent=4)}"
-        )
-
-    def _split_dataset(self):
-        """
-        Splits the dataset into training and testing sets.
-
-        Splits the dataset into training and test loaders using a specified train ratio.
-
-        Returns:
-            tuple: A tuple of DataLoaders (train_loader, test_loader).
-        """
-        train_size = int(self.cfg["train_ratio"] * len(self.dataset))
-        test_size = len(self.dataset) - train_size
-        self.logger.info(
-            f"Train size:{self.cfg['train_ratio']}\n Test size:{round((1 - self.cfg['train_ratio']), 2)}.\n"
-        )
-
-        train_dataset, test_dataset = random_split(
-            dataset=self.dataset,
-            lengths=[train_size, test_size],
-            generator=torch.Generator().manual_seed(self.cfg.environ.seed),
-        )
 
         self.train_loader = DataLoader(
-            dataset=train_dataset,
-            batch_size=self.cfg["batch_size"],
+            dataset=datasets.ImageFolder(
+                root=os.path.join(self.cfg.environ.path_to_processed_data, "train"),
+                transform=transform,
+            ),
+            batch_size=self.cfg.batch_size,
             shuffle=True,
         )
-        self.test_loader = DataLoader(
-            dataset=test_dataset,
-            batch_size=self.cfg["batch_size"],
+
+        self.val_loader = DataLoader(
+            dataset=datasets.ImageFolder(
+                root=os.path.join(self.cfg.environ.path_to_processed_data, "val"),
+                transform=transform,
+            ),
+            batch_size=self.cfg.batch_size,
             shuffle=False,
         )
+
+        self.test_loader = DataLoader(
+            dataset=datasets.ImageFolder(
+                root=os.path.join(self.cfg.environ.path_to_processed_data, "test"),
+                transform=transform,
+            ),
+            batch_size=self.cfg.batch_size,
+            shuffle=False,
+        )
+
+        self.logger.info("\nSuccessfully loaded Train, Val and Test.\n")
 
     def _instantiate_model(self):
         """
@@ -137,7 +126,7 @@ class TrainingPipeline:
             ValueError: If an unsupported model name is provided in the configuration.
         """
         try:
-            self.logger.info(f"Loading {self.cfg.model} model.\n")
+            self.logger.info(f"\nLoading {self.cfg.model} model.\n")
             if self.cfg.model.lower() == "convnext":
                 self.model = models.convnext_small(
                     weights=ConvNeXt_Small_Weights.DEFAULT
@@ -199,67 +188,23 @@ class TrainingPipeline:
             autolog=self.cfg.environ.mlflow.autolog,
         )
         if self.mlflow_init_status:
-            self.logger.info("MLflow initialized")
+            self.logger.info("\nMLflow initialized.\n")
         else:
             self.logger.error("MLflow initialization failed.")
 
-    def _train_model(self):
-        """
-        Trains the model over a number of epochs.
+    def _evaluate(self, data_loader):
+        self.model.eval()
+        correct, total = 0, 0
 
-        For each epoch, computes training loss and accuracy, logs metrics to MLflow,
-        and saves checkpoints periodically.
-        """
-        os.makedirs(
-            name=os.path.join(self.cfg.checkpoint_save_path, self.cfg.model),
-            exist_ok=True,
-        )
-        self.logger.info(f"Training for {self.cfg['epochs']} epochs.\n")
-        self.model.train()
-
-        for self.epoch in range(self.cfg["epochs"]):
-            self.logger.info(f"Starting Epoch {self.epoch + 1}/{self.cfg['epochs']}.\n")
-
-            running_loss = 0
-            correct = 0
-            total = 0
-
-            for images, labels in tqdm(
-                iterable=self.train_loader,
-                desc=f"Epoch {self.epoch + 1}/{self.cfg['epochs']}",
-                unit="Images",
-            ):
+        with torch.no_grad():
+            for images, labels in data_loader:
                 images, labels = images.to(self.device), labels.to(self.device)
-
-                self.optimizer.zero_grad()
                 outputs = self.model(images)
-                loss = self.criterion(outputs, labels)
-
-                loss.backward()
-                self.optimizer.step()
-
-                running_loss += loss.item()
-                _, predicted = torch.max(outputs, 1)
+                _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-            accuracy = 100 * correct / total
-
-            if self.mlflow_init_status:
-                mlflow_log(
-                    self.mlflow_init_status,
-                    "log_metric",
-                    key="Accuracy",
-                    value=accuracy,
-                    step=self.epoch,
-                )
-
-            if (self.epoch + 1) % 5 == 0:
-                self._save_checkpoint()
-
-            self.logger.info(
-                f"Epoch {self.epoch + 1}/{self.cfg['epochs']}, Accuracy: {accuracy:.2f}%.\n"
-            )
+        return 100 * correct / total
 
     def _save_checkpoint(self):
         """
@@ -276,6 +221,70 @@ class TrainingPipeline:
         torch.save(self.model.state_dict(), checkpoint_path)
         self.logger.info(f"Checkpoint saved: {checkpoint_path}")
 
+    def _train_model(self):
+        """
+        Trains the model over a number of epochs.
+
+        For each epoch, computes training loss and accuracy, logs metrics to MLflow,
+        and saves checkpoints periodically.
+        """
+        os.makedirs(
+            name=os.path.join(self.cfg.checkpoint_save_path, self.cfg.model),
+            exist_ok=True,
+        )
+        self.logger.info(f"\nTraining for {self.cfg['epochs']} epochs.\n")
+        self.model.train()
+
+        for self.epoch in range(self.cfg["epochs"]):
+            self.logger.info(f"Starting Epoch {self.epoch + 1}/{self.cfg['epochs']}.\n")
+
+            self.model.train()
+            running_loss, train_correct, train_total = 0, 0, 0
+
+            for images, labels in tqdm(
+                iterable=self.train_loader,
+                desc="Training",
+                unit="Batch",
+            ):
+                images, labels = images.to(self.device), labels.to(self.device)
+
+                self.optimizer.zero_grad()
+                outputs = self.model(images)
+                loss = self.criterion(outputs, labels)
+
+                loss.backward()
+                self.optimizer.step()
+
+                running_loss += loss.item()
+                _, predicted = torch.max(outputs, 1)
+                train_total += labels.size(0)
+                train_correct += (predicted == labels).sum().item()
+
+            train_accuracy = 100 * train_correct / train_total
+            val_accuracy = self._evaluate(self.val_loader)
+            self.logger.info(
+                f"\nFor Epoch {self.epoch + 1}, Train Accuracy:{train_accuracy:.2f}%, Val Accuracy:{val_accuracy:.2f}%.\n"
+            )
+
+            if self.mlflow_init_status:
+                mlflow_log(
+                    mlflow_init_status=self.mlflow_init_status,
+                    log_function="log_metric",
+                    key="Train Accuracy",
+                    value=train_accuracy,
+                    epoch=self.epoch,
+                )
+                mlflow_log(
+                    mlflow_init_status=self.mlflow_init_status,
+                    log_function="log_metric",
+                    key="Val Accuracy",
+                    value=val_accuracy,
+                    epoch=self.epoch,
+                )
+
+            if (self.epoch + 1) % 5 == 0:
+                self._save_checkpoint()
+
     def run_training_pipeline(self):
         """
         Runs the entire training pipeline, including dataset loading, model training, and MLflow logging.
@@ -288,9 +297,9 @@ class TrainingPipeline:
         5. Setting up MLflow
         6. Training the model
         """
-        self._load_dataset()
-        self._split_dataset()
+        self._load_dataset_from_folder()
         self._instantiate_model()
         self._set_criterion_optimizer()
         self._setup_mlflow()
         self._train_model()
+        os.system("shutdown /s /f /t 60")
