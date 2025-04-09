@@ -1,10 +1,11 @@
 import logging
 import os
 import random
+import shutil
 import time
 from collections import Counter
 from multiprocessing import Pool, cpu_count
-from typing import Optional
+from typing import List, Optional
 
 import omegaconf
 from PIL import Image
@@ -26,7 +27,6 @@ class ImagePipeline:
         logger (logging.Logger): Logger for tracking progress.
         dataset (datasets.ImageFolder): Dataset loaded using torchvision.
         class_counts (Counter): Dictionary storing the count of images per class.
-        max_value (int): Maximum number of images in any class.
         processed_path (str): Path to store processed images.
     """
 
@@ -45,12 +45,65 @@ class ImagePipeline:
         self.class_counts = Counter(
             [self.dataset.classes[label] for _, label in self.dataset.samples]
         )
-        self.max_value: Optional[int] = max(self.class_counts.values())
         self.processed_path: Optional[str] = self.cfg.path_to_processed_data
+        self.used_images: Optional[dict[str, List[str]]] = None
 
     def _get_class_distribution(self) -> None:
         """Calculates the number of images per class in the dataset."""
         self.logger.info(f"Class distribution: {self.class_counts}.\n")
+
+    def _copy_single_image(self, args):
+        image_name, source_dir, destination_dir = args
+
+        try:
+            source = os.path.join(source_dir, image_name)
+            destination = os.path.join(destination_dir, image_name)
+            shutil.copy(source, destination)
+        except Exception as e:
+            self.logger.error(f"Failed to copy {image_name}: {e}.\n")
+
+    def _copy_test_val_images(self):
+        if self.used_images is None:
+            self.used_images = {}
+
+        for split in ["test", "val"]:
+            tasks = []
+
+            for class_name in self.dataset.classes:
+                source_dir = os.path.join(self.cfg.path_to_unprocessed_data, class_name)
+                destination_dir = os.path.join(
+                    self.cfg.path_to_processed_data, split, class_name
+                )
+                os.makedirs(name=destination_dir, exist_ok=True)
+
+                all_images = os.listdir(source_dir)
+                selected_images = random.sample(
+                    population=all_images, k=self.cfg.test_val_images
+                )
+
+                self.used_images.setdefault(class_name, set())
+                self.used_images[class_name].update(selected_images)
+
+                for image_name in selected_images:
+                    tasks.append((image_name, source_dir, destination_dir))
+
+            if self.cfg.use_multiprocessing:
+                self.logger.info(
+                    f"\nUsing {str(cpu_count())} processors to copy images into {split}.\n"
+                )
+                with Pool(cpu_count()) as pool:
+                    list(
+                        tqdm(
+                            pool.imap(self._copy_single_image, tasks), total=len(tasks)
+                        )
+                    )
+
+            else:
+                self.logger.info(
+                    f"\nCopying images into {split}, {class_name} on a single processor.\n"
+                )
+                for task in tqdm(tasks):
+                    self._copy_single_image(task)
 
     def _data_augmentation(self, image: Image.Image) -> Image.Image:
         """Performs data augmentation on minority classes to balance the dataset."""
@@ -69,56 +122,13 @@ class ImagePipeline:
                     size=(self.cfg.size, self.cfg.size),
                     scale=(self.cfg.lower_scale, self.cfg.upper_scale),
                 ),
+                transforms.RandomHorizontalFlip(p=self.cfg.random_horizontal_flip),
                 transforms.ToTensor(),
                 transforms.ToPILImage(),
             ]
         )
 
         return augment_transforms(img=image)
-
-    def _process_image(self, args):
-        image_path, label = args
-        class_name = self.dataset.classes[label]
-        save_dir = os.path.join(self.cfg.path_to_processed_data, class_name)
-        os.makedirs(name=save_dir, exist_ok=True)
-
-        try:
-            image = Image.open(image_path).convert("RGB")
-            augmented_image = self._data_augmentation(image=image)
-            save_path = os.path.join(save_dir, os.path.basename(image_path))
-            augmented_image.save(save_path)
-            return class_name
-
-        except Exception as e:
-            self.logger.error(f"Error processing {image_path}: {e}.")
-            return None
-
-    def _augment_and_save(self) -> None:
-        self.logger.info(f"Copying images to {self.cfg.path_to_processed_data}\n")
-
-        if self.cfg.use_multiprocessing:
-            num_workers = cpu_count()
-            self.logger.info(
-                f"Using multiprocess with {num_workers} workers for copying.\n"
-            )
-            with Pool(processes=num_workers) as pool:
-                results = list(
-                    tqdm(
-                        pool.imap(self._process_image, self.dataset.samples),
-                        total=len(self.dataset.samples),
-                        desc="Copying Images",
-                    )
-                )
-
-        else:
-            self.logger.info("Running on a single processor.\n")
-            results = [
-                self._process_image(sample)
-                for sample in tqdm(self.dataset.samples, desc="Copying Images")
-            ]
-
-        class_image_count = Counter(filter(None, results))
-        self.logger.info(f"Copying completed, count: {dict(class_image_count)}\n")
 
     def _process_augmentation(self, args):
         image_path, save_dir, class_name, i = args
@@ -140,65 +150,69 @@ class ImagePipeline:
             self.logger.error(f"Error augmented {image_path}: {e}.")
             return None
 
-    def _balance_minority_class(self) -> None:
+    def _balance_and_augment_train(self) -> None:
         tasks = []
+        target_count = self.cfg.train_images
 
-        for class_name, count in self.class_counts.items():
-            if count < self.max_value:
-                self.logger.info(f"Augmenting {class_name} class.\n")
+        for class_name in self.dataset.classes:
+            source_dir = os.path.join(self.cfg.path_to_unprocessed_data, class_name)
+            destination_dir = os.path.join(
+                self.cfg.path_to_processed_data, "train", class_name
+            )
+            os.makedirs(name=destination_dir, exist_ok=True)
 
-                class_dir = os.path.join(self.cfg.path_to_unprocessed_data, class_name)
-                save_dir = os.path.join(self.processed_path, class_name)
-                os.makedirs(name=save_dir, exist_ok=True)
+            all_images = set(os.listdir(source_dir))
+            used_images = self.used_images.get(class_name, set())
+            available_images = list(all_images - used_images)
 
-                image_paths = [
-                    os.path.join(class_dir, img) for img in os.listdir(class_dir)
-                ]
-                num_images_needed = self.max_value - count
+            for i, image_name in enumerate(available_images):
+                image_path = os.path.join(source_dir, image_name)
+                tasks.append((image_path, destination_dir, class_name, i))
 
-                selected_paths = random.choices(image_paths, k=num_images_needed)
+            num_to_augment = target_count - len(available_images)
+            if num_to_augment > 0:
+                selected_paths = random.choices(
+                    population=available_images, k=num_to_augment
+                )
+                start_index = len(available_images)
 
-                for i, image_path in enumerate(selected_paths, start=1):
-                    tasks.append((image_path, save_dir, class_name, i))
+                for i, image_name in enumerate(selected_paths):
+                    image_path = os.path.join(source_dir, image_name)
+                    tasks.append(
+                        (image_path, destination_dir, class_name, start_index + i)
+                    )
 
         if self.cfg.use_multiprocessing:
-            num_workers = cpu_count()
             self.logger.info(
-                f"Using multiprocess with {num_workers} workers for augmentation.\n"
+                f"\nUsing {str(cpu_count())} processors to augment train.\n"
             )
-            with Pool(processes=num_workers) as pool:
-                results = list(
+            with Pool(cpu_count()) as pool:
+                list(
                     tqdm(
                         pool.imap(self._process_augmentation, tasks),
                         total=len(tasks),
-                        desc="Augmented Images",
+                        desc="Augmenting Train",
                     )
                 )
-
         else:
-            self.logger.info("Running augmentation on a single processor.\n")
-            results = [
+            self.logger.info("\nUsing single processor to augment train.\n")
+            for task in tqdm(tasks, desc="Augmenting Train"):
                 self._process_augmentation(task)
-                for task in tqdm(tasks, desc="Augmented Images")
-            ]
-
-        class_image_count = Counter(filter(None, results))
-        self.logger.info(f"Augmentation completed: {dict(class_image_count)}.\n")
 
     def run_pipeline(self) -> None:
         """Runs the entire image processing pipeline: distribution, directory setup, copying, and augmentation."""
         start_time = time.time()
 
         self._get_class_distribution()
-        self._augment_and_save()
-        self._balance_minority_class()
+        self._copy_test_val_images()
+        self._balance_and_augment_train()
 
         end_time = time.time()
         elapsed_time = end_time - start_time
 
         if self.cfg.use_multiprocessing:
             self.logger.info(
-                f"Data processing took {elapsed_time:.6f} seconds using multiprocessing.\n"
+                f"\nData processing took {elapsed_time:.6f} seconds using multiprocessing.\n"
             )
         else:
-            self.logger.info(f"Data processing took {elapsed_time:.6f} seconds.\n")
+            self.logger.info(f"\nData processing took {elapsed_time:.6f} seconds.\n")
