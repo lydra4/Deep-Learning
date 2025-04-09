@@ -12,6 +12,6 @@ out_features: 2
 learning_rate: 0.001
 epochs: 100
 
-model: "resnet-18"
+model: "convnext"
 
 checkpoint_save_path: "./model"
