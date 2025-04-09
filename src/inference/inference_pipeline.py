@@ -113,7 +113,6 @@ class InferencePipeline(TrainingPipeline):
         - Initializes the model and loads weights.
         - Runs inference on the test set and logs performance.
         """
-        self._load_dataset()
-        self._split_dataset()
+        self._load_dataset_from_folder()
         self._initialize_model_with_weights()
         self._run_infer(data_loader=self.test_loader)
