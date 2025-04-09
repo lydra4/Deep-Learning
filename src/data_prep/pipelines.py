@@ -273,4 +273,6 @@ class ImagePipeline:
                 f"\nData processing took {elapsed_time:.6f} seconds using multiprocessing.\n"
             )
         else:
-            self.logger.info(f"\nData processing took {elapsed_time:.6f} seconds.\n")
+            self.logger.info(
+                f"\nData processing took {elapsed_time:.6f} seconds on a single processor.\n"
+            )
