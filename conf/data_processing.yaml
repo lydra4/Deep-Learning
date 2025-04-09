@@ -7,7 +7,7 @@ use_multiprocessing: True
 path_to_unprocessed_data: "./data/unprocessed/"
 path_to_processed_data: "./data/processed/"
 
-test_val_images: 100
+test_val_images: 500
 train_images: 2000
 
 color_jitter_brightness: 0.5
