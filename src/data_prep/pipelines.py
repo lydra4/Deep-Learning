@@ -14,29 +14,33 @@ from tqdm import tqdm
 
 
 class ImagePipeline:
-    """Pipeline for processing image datasets, including augmentation and copying.
+    """
+    A class to process image datasets, including class distribution calculation, image copying,
+    and data augmentation for balancing the dataset.
 
-    This class processes image datasets by:
-    1. Calculating class distributions.
-    2. Creating necessary directories.
-    3. Copying original images to a new location while applying augmentation.
-    4. Performing additional data augmentation on minority classes to balance the dataset.
+    This class performs the following tasks:
+    1. Calculates class distributions.
+    2. Creates necessary directories for processed data.
+    3. Copies original images to test and validation directories.
+    4. Performs data augmentation on the training dataset to balance the classes.
 
     Attributes:
-        cfg (dict): Configuration dictionary.
-        logger (logging.Logger): Logger for tracking progress.
-        dataset (datasets.ImageFolder): Dataset loaded using torchvision.
-        class_counts (Counter): Dictionary storing the count of images per class.
-        processed_path (str): Path to store processed images.
+        cfg (omegaconf.DictConfig): Configuration dictionary containing paths and augmentation settings.
+        logger (logging.Logger): Logger to track the progress and any issues.
+        dataset (torchvision.datasets.ImageFolder): Dataset loaded using torchvision.
+        class_counts (collections.Counter): Counts of images per class in the dataset.
+        processed_path (Optional[str]): Path where processed images will be stored.
+        used_images (Optional[dict[str, List[str]]]): A dictionary to track images already used for test/val.
     """
 
     def __init__(
         self, cfg: omegaconf.DictConfig, logger: Optional[logging.Logger]
     ) -> None:
-        """Initializes the ImagePipeline with configuration and logging.
+        """
+        Initializes the ImagePipeline with configuration and logging.
 
         Args:
-            cfg (dict): Configuration dictionary containing paths and augmentation settings.
+            cfg (omegaconf.DictConfig): Configuration dictionary containing paths and augmentation settings.
             logger (Optional[logging.Logger]): Logger for tracking progress. Defaults to None.
         """
         self.cfg = cfg
@@ -49,7 +53,11 @@ class ImagePipeline:
         self.used_images: Optional[dict[str, List[str]]] = None
 
     def _get_class_distribution(self) -> None:
-        """Calculates the number of images per class in the dataset."""
+        """
+        Logs the distribution of images across different classes in the dataset.
+
+        This method calculates and logs the number of images per class in the dataset.
+        """
         self.logger.info(f"Class distribution: {self.class_counts}.\n")
 
     def _copy_single_image(self, args):
@@ -63,6 +71,12 @@ class ImagePipeline:
             self.logger.error(f"Failed to copy {image_name}: {e}.\n")
 
     def _copy_test_val_images(self):
+        """
+        Copies a specified number of test and validation images to their respective directories.
+
+        This method selects random images from the source dataset and copies them into separate
+        test and validation directories. It also tracks which images have been used to avoid duplication.
+        """
         if self.used_images is None:
             self.used_images = {}
 
@@ -106,7 +120,18 @@ class ImagePipeline:
                     self._copy_single_image(task)
 
     def _data_augmentation(self, image: Image.Image) -> Image.Image:
-        """Performs data augmentation on minority classes to balance the dataset."""
+        """
+        Applies data augmentation to the input image.
+
+        This method performs a series of random transformations such as color jitter, Gaussian blur,
+        random resized crop, and random horizontal flip to augment the input image.
+
+        Args:
+            image (PIL.Image.Image): The image to be augmented.
+
+        Returns:
+            PIL.Image.Image: The augmented image.
+        """
         augment_transforms = transforms.Compose(
             [
                 transforms.ColorJitter(
@@ -130,7 +155,19 @@ class ImagePipeline:
 
         return augment_transforms(img=image)
 
-    def _process_augmentation(self, args):
+    def _process_augmentation(self, args) -> Optional[str]:
+        """
+        Processes and saves augmented images.
+
+        This method takes an image, applies augmentation, and saves the resulting image to the destination
+        directory.
+
+        Args:
+            args (tuple): Contains image path, save directory, class name, and index for naming.
+
+        Returns:
+            Optional[str]: The class name of the processed image or None in case of failure.
+        """
         image_path, save_dir, class_name, i = args
 
         try:
@@ -151,6 +188,17 @@ class ImagePipeline:
             return None
 
     def _balance_and_augment_train(self) -> None:
+        """
+        Balances and augments the training dataset by duplicating minority class images.
+
+        This method ensures that each class has the same number of images by augmenting the images
+        from the minority classes and copying them into the training dataset.
+
+        This operation can be parallelized using multiple processors.
+
+        Args:
+            None
+        """
         tasks = []
         target_count = self.cfg.train_images
 
@@ -200,7 +248,17 @@ class ImagePipeline:
                 self._process_augmentation(task)
 
     def run_pipeline(self) -> None:
-        """Runs the entire image processing pipeline: distribution, directory setup, copying, and augmentation."""
+        """
+        Executes the complete image processing pipeline.
+
+        This method runs the entire pipeline which includes getting class distribution,
+        copying test and validation images, and augmenting the training dataset.
+
+        The elapsed time for the process is logged at the end.
+
+        Args:
+            None
+        """
         start_time = time.time()
 
         self._get_class_distribution()
