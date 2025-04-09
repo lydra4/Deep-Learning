@@ -27,7 +27,7 @@ def main(cfg):
         None
     """
     logger = logging.getLogger(__name__)
-    logger.info("Setting up logging configuration.")
+    logger.info("\nSetting up logging configuration.\n")
     setup_logging(
         logging_config_path=os.path.join(
             hydra.utils.get_original_cwd(), "conf", "logging.yaml"
@@ -36,7 +36,7 @@ def main(cfg):
 
     if cfg.environ.seed:
         fix_seed(seed=cfg.environ.seed)
-        logger.info(f"Seed fixed at {cfg.environ.seed}.\n")
+        logger.info(f"\nSeed fixed at {cfg.environ.seed}.\n")
 
     if cfg.environ.device < 0:
         device = torch.device("cpu")
