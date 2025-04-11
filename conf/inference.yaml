@@ -26,3 +26,6 @@ retrieval:
   return_source_documents: True
   verbose: False
   max_tokens: 15_000
+
+gradio:
+  captions_path: "data/inference/ui_captions.txt"
