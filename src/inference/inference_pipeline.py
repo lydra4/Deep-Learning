@@ -175,7 +175,7 @@ class InferencePipeline:
 
         model = self.cfg.llm.model
         temperature = self.cfg.llm.temperature
-        api_key_env_var = "OPENAI_API_KEY" if "gpt-" in model else "GEMINI_API_KEY"
+        api_key_env_var = "openai_api_key" if "gpt-" in model else "gemini_api_key"
         api_key = os.getenv(api_key_env_var)
 
         if not api_key:
