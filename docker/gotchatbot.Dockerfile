@@ -14,7 +14,7 @@ RUN useradd -l -m -s /bin/bash -u ${NON_ROOT_UID} ${NON_ROOT_USER}
 ENV PYTHONIOENCODING=utf8
 ENV LANG="C.UTF-8"
 ENV LC_ALL="C.UTF-8"
-ENV PATH="./.local/bin:${PATH}"
+ENV PATH="/home/gotchatbot/.local/bin:${PATH}"
 
 USER ${NON_ROOT_USER}
 WORKDIR ${HOME_DIR}/${REPO_DIR}
@@ -30,6 +30,12 @@ COPY --chown=${NON_ROOT_USER}:${NON_ROOT_GID} ${REPO_DIR} .
 
 # Copy the .env file into the container
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_GID} src/.env ${HOME_DIR}/${REPO_DIR}/.env
+
+# Expose port
+EXPOSE 7860
+
+# Accept connection from any computer
+ENV GRADIO_SERVER_NAME="0.0.0.0"
 
 # Default command
 CMD ["python", "src/app.py"]
