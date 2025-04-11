@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 import gradio as gr
 import omegaconf
 from inference.inference_pipeline import InferencePipeline
+from langfuse.decorators import observe
 
 
 class GradioApp:
@@ -31,15 +32,20 @@ class GradioApp:
         self.first_part = parts[0]
         self.second_part = parts[1]
 
+    @observe()
     def chat_response(
         self, history: List[Tuple[str, str]], question: str
     ) -> Tuple[List[Tuple[str, str]], str]:
-        response = self.inference_pipeline.qa_chain.invoke({"query": question})
+        response = self.inference_pipeline.qa_chain.invoke(
+            {"query": question},
+            config={"callbacks": [self.inference_pipeline.langfuse_handler]},
+        )
         answer = response["result"]
         history.append((question, answer))
 
         return history, ""
 
+    @observe()
     def launch_app(self):
         self._load_captions()
 
