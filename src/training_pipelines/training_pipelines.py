@@ -272,14 +272,14 @@ class TrainingPipeline:
                     log_function="log_metric",
                     key="Train Accuracy",
                     value=train_accuracy,
-                    epoch=self.epoch,
+                    step=self.epoch,
                 )
                 mlflow_log(
                     mlflow_init_status=self.mlflow_init_status,
                     log_function="log_metric",
                     key="Val Accuracy",
                     value=val_accuracy,
-                    epoch=self.epoch,
+                    step=self.epoch,
                 )
 
             if (self.epoch + 1) % 5 == 0:
