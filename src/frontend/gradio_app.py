@@ -12,6 +12,8 @@ class GradioApp:
     ) -> None:
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
+        self.first_part: Optional[str] = None
+        self.second_part: Optional[str] = None
         self.inference_pipeline = InferencePipeline(cfg=cfg, logger=self.logger)
 
         self.inference_pipeline.load_embedding_model()
@@ -19,6 +21,15 @@ class GradioApp:
         self.inference_pipeline._initialize_llm()
         self.inference_pipeline._create_retriever()
         self.inference_pipeline._create_qa_chain()
+
+    def _load_captions(self):
+        with open(file=self.cfg.gradio.captions_path, mode="r", encoding="utf-8") as f:
+            content = f.read()
+
+        parts = content.strip().split("---")
+
+        self.first_part = parts[0]
+        self.second_part = parts[1]
 
     def chat_response(
         self, history: List[Tuple[str, str]], question: str
@@ -30,14 +41,12 @@ class GradioApp:
         return history, ""
 
     def launch_app(self):
+        self._load_captions()
+
         with gr.Blocks() as demo:
-            gr.Markdown(
-                "Game of Thrones Chatbot \n\n Ask me anything about Game of Thrones!"
-            )
+            gr.Markdown(self.first_part)
             chatbot = gr.Chatbot()
-            user_input = gr.Textbox(
-                placeholder="Type your question here.", show_label=False
-            )
+            user_input = gr.Textbox(placeholder=self.second_part, show_label=False)
 
             def respond(history, question):
                 updated_history, _ = self.chat_response(
@@ -49,4 +58,4 @@ class GradioApp:
                 lambda: "", [], [user_input]
             )
 
-        demo.launch(server_name="0.0.0.0", server_port=7860)
+        demo.launch()
