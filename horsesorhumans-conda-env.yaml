@@ -1,7 +1,0 @@
-name: horsesorhumans
-channels:
-  - defaults
-  - conda-forge
-dependencies:
-  - python=3.11.11
-  - pip=24.3.1
