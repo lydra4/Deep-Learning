@@ -8,6 +8,7 @@ conf/**/*credentials*
 # Ignore everything in the following folders
 logs/**
 models/**
+data/**
 data/embeddings/**
 
 # Except their sub-folders
