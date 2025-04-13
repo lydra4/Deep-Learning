@@ -127,7 +127,7 @@ class TrainingPipeline:
         """
         try:
             self.logger.info(f"\nLoading {self.cfg.model} model.\n")
-            if self.cfg.model.lower() == "convnext":
+            if self.cfg.model.lower().strip() == "convnext":
                 self.model = models.convnext_small(
                     weights=ConvNeXt_Small_Weights.DEFAULT
                 )
@@ -136,14 +136,14 @@ class TrainingPipeline:
                     in_features=number_features, out_features=self.cfg.out_features
                 )
 
-            elif self.cfg.model.lower() == "efficientnet":
+            elif self.cfg.model.lower().strip() == "efficientnet":
                 self.model = efficientnet_b0(weights=EfficientNet_B0_Weights)
                 number_features = self.model.classifier[1].in_features
                 self.model.classifier[1] = nn.Linear(
                     in_features=number_features, out_features=self.cfg.out_features
                 )
 
-            elif self.cfg.model.lower() == "resnet-18":
+            elif self.cfg.model.lower().strip() == "resnet-18":
                 self.model = resnet18(weights=ResNet18_Weights.DEFAULT)
                 number_features = self.model.fc.in_features
                 self.model.fc = nn.Linear(
@@ -302,4 +302,3 @@ class TrainingPipeline:
         self._set_criterion_optimizer()
         self._setup_mlflow()
         self._train_model()
-        os.system("shutdown /s /f /t 60")
