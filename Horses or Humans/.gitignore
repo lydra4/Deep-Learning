@@ -12,7 +12,6 @@ data/**
 data/embeddings/**
 
 # Except their sub-folders
-!data/**/
 !logs/**/
 !models/**/
 
