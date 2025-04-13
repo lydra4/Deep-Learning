@@ -9,9 +9,9 @@ conf/**/*credentials*
 logs/**
 models/**
 data/**
-data/embeddings/**
 
 # Except their sub-folders
+!data/**/
 !logs/**/
 !models/**/
 
@@ -157,12 +157,16 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# mlflow folder
+mlflow/
+
 # animations
 *.mp4
 *.npy
 
-# books
-*.epub
+# model checkpoints
+*.pt
+*.pth
 
 # Training commands
 commands/
