@@ -1,17 +1,12 @@
-gradio
 hydra-core
 matplotlib
 mlflow
 numpy
 opencv-python
 pillow
-pylint
 python-json-logger
 python-multipart
 pyyaml
-rich
-ruff
 torch
 torchvision
 tqdm
-uvicorn

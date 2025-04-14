@@ -1,18 +1,13 @@
-gradio
 hydra-core
 matplotlib
 mlflow
 numpy
 opencv-python
 pillow
-pylint
 python-json-logger
 python-multipart
 pyyaml
-rich
-ruff
 tqdm
-uvicorn
 
 # Install torch, torchvision, and torchaudio from the specified PyTorch index URL
 --extra-index-url https://download.pytorch.org/whl/cu126
