@@ -65,7 +65,7 @@ class InferencePipeline(TrainingPipeline):
 
         elif self.model_name.lower() == "efficientnet":
             self.model = efficientnet_b0(weights=EfficientNet_B0_Weights)
-            number_features = self.model.classified[1].in_features
+            number_features = self.model.classifier[1].in_features
             self.model.classifier[1] = nn.Linear(
                 in_features=number_features, out_features=out_features
             )
