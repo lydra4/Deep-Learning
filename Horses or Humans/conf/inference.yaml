@@ -2,4 +2,4 @@ defaults:
   - training
   - _self_
 
-checkpoint_path: "./model/resnet-18/model_epoch_100.pth"
+checkpoint_path: "./model/efficientnet/model_epoch_10.pth"
