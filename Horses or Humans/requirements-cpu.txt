@@ -1,4 +1,4 @@
-fastapi
+gradio
 hydra-core
 matplotlib
 mlflow
