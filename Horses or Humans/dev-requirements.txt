@@ -1,0 +1,6 @@
+black
+gradio
+pre-commit
+pylint
+ruff
+sphinx
