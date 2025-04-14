@@ -3,6 +3,7 @@ hydra-core
 matplotlib
 mlflow
 numpy
+opencv-python
 pillow
 pylint
 python-json-logger
