@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Optional
 
 import omegaconf
 import torch
@@ -38,6 +39,8 @@ class InferencePipeline(TrainingPipeline):
             device (torch.device): Torch device (CPU or GPU) used for running inference.
         """
         super().__init__(cfg=cfg, logger=logger, device=device)
+        self.model_name: Optional[str] = None
+        self.model: Optional[nn.Module] = None
 
     def _initialize_model_with_weights(self) -> None:
         """Initializes the model with pretrained weights and loads the saved checkpoint.
