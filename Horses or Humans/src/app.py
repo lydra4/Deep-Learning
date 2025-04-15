@@ -1,43 +1,51 @@
-import io
+import logging
+import os
 
-import cv2
-import uvicorn
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from frontend.cam_utils import predict_and_generate_cam
+import gradio as gr
+import hydra
+import omegaconf
+import torch
+from inference.inference_pipeline import InferencePipeline
 from PIL import Image
-from starlette.responses import Response
-
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+from utils.general_utils import setup_logging
+from utils.seed_utils import fix_seed
 
 
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return """
-    <html>
-        <body>
-            <h2>Upload an image (Horse or Human):</h2>
-            <form action="/upload/" enctype="multipart/form-data" method="post">
-            <input name="file" type="file">
-            <input type="submit">
-            </form>
-        </body>
-    </html>
-    """
+@hydra.main(version_base=None, config_path="../conf", config_name="inference.yaml")
+def main(cfg: omegaconf.DictConfig):
+    logger = logging.getLogger(__name__)
+    logging.info("Setting up logging configuration.\n")
+    setup_logging(
+        logging_config_path=os.path.join(
+            hydra.utils.get_original_cwd(), "conf", "logging.yaml"
+        )
+    )
 
+    fix_seed(seed=cfg.environ.seed)
 
-@app.post("/upload/")
-def upload(file: UploadFile = File(...)):
-    image_bytes = file.file.read()
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    if cfg.environ.device < 0:
+        device = torch.device("cpu")
+    else:
+        device = torch.device(f"cuda:{cfg.environ.device}")
 
-    result_image = predict_and_generate_cam(image)
-    _, image_encoded = cv2.imencode(".png", result_image)
+    inference_pipeline = InferencePipeline(cfg=cfg, logger=logger, device=device)
+    inference_pipeline.batch_infer()
 
-    return Response(content=image_encoded.tobytes(), media_type="image/png")
+    def gradio_inferface(image: Image.Image):
+        return inference_pipeline.classify_and_generate_cam(image=image)
+
+    gr.Interface(
+        fn=gradio_inferface,
+        inputs=gr.Image(type="pil", label="Upload an image of a horse or human"),
+        outputs=[
+            gr.Label(num_top_classes=1, label="Prediction"),
+            gr.Image(type="numpy", label="Class Activation Map"),
+        ],
+        title="Horse vs Human Classifer with CAM",
+        description="Upload an image to classify it as either a horse or human",
+        theme="dark",
+    ).launch()
 
 
 if __name__ == "__main__":
-    uvicorn.run("src.app:app", host="127.0.0.1", port=8_000, reload=True)
+    main()
