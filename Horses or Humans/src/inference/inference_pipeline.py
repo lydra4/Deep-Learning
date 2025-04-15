@@ -122,10 +122,10 @@ class InferencePipeline(TrainingPipeline):
 
         cam = torch.sum(feature_maps, dim=1).squeeze()
         cam = F.relu(cam)
-        cam = cam.min()
+        cam = cam - cam.min()
         cam = cam / cam.max()
         cam = cam.cpu().numpy()
-        cam = cv2.resize(cam, (original_image.shape[1], original_image[0]))
+        cam = cv2.resize(cam, (original_image.shape[1], original_image.shape[0]))
         cam = np.uint8(255 * cam)
         cam = cv2.applyColorMap(cam, cv2.COLORMAP_JET)
         superimposed_img = cv2.addWeighted(original_image, 0.5, cam, 0.5, 0)
