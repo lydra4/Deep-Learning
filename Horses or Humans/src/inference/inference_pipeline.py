@@ -2,9 +2,12 @@ import logging
 import os
 from typing import Optional
 
+import cv2
+import numpy as np
 import omegaconf
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.models as models
 from torchvision.models import (
     ConvNeXt_Small_Weights,
@@ -42,7 +45,7 @@ class InferencePipeline(TrainingPipeline):
         self.model_name: Optional[str] = None
         self.model: Optional[nn.Module] = None
 
-    def _initialize_model_with_weights(self) -> None:
+    def initialize_model_with_weights(self) -> None:
         """Initializes the model with pretrained weights and loads the saved checkpoint.
 
         This method:
@@ -85,8 +88,53 @@ class InferencePipeline(TrainingPipeline):
 
         checkpoint = torch.load(self.cfg.checkpoint_path, map_location=self.device)
         self.model.load_state_dict(checkpoint)
+        self.logger.info("Checkpoint loaded successfully.")
         self.model.to(self.device)
         self.model.eval()
+
+    def generate_cam(
+        self, image_tensor: torch.Tensor, original_image: np.ndarray, target_class: int
+    ) -> np.ndarray:
+        feature_maps = None
+        gradients = None
+
+        def forward_hook(module, input, output):
+            nonlocal feature_maps
+            feature_maps = output.detach()
+
+        def backward_hook(module, grad_in, grad_out):
+            nonlocal gradients
+            gradients = grad_out[0].detach()
+
+        handle_fwd = self.model.features[-1].register_forward_hook(forward_hook)
+        handle_bwd = self.model.features[-1].register_backward_hook(backward_hook)
+
+        output = self.model(image_tensor)
+        self.model.zero_grad()
+        class_score = output[0, target_class]
+        class_score.backward()
+
+        pooled_gradients = torch.mean(gradients, dim=[0, 2, 3])
+
+        for i in range(feature_maps.shape[1]):
+            feature_maps[0, i, :, :] *= pooled_gradients[i]
+
+        cam = torch.sum(feature_maps, dim=1).squeeze()
+        cam = F.relu(cam)
+        cam = cam.min()
+        cam = cam / cam.max()
+        cam = cam.cpu().numpy()
+        cam = cv2.resize(cam, (original_image.shape[1], original_image[0]))
+        cam = np.uint8(255 * cam)
+        cam = cv2.applyColorMap(cam, cv2.COLORMAP_JET)
+        superimposed_img = cv2.addWeighted(original_image, 0.5, cam, 0.5, 0)
+
+        handle_fwd.remove()
+        handle_bwd.remove()
+
+        return superimposed_img
+
+    # def classify_and_generate_cam(self, image: Image.Image) -> Tuple[str, np.ndarray]:
 
     def _run_infer(self, data_loader: torch.utils.data.DataLoader) -> None:
         """Performs inference on the test dataset and logs the accuracy.
@@ -108,7 +156,7 @@ class InferencePipeline(TrainingPipeline):
         accuracy = correct / total
         self.logger.info(f"Accuracy for {self.model_name}: {accuracy}.\n")
 
-    def perform_inference(self):
+    def run_inference(self):
         """Executes the full inference pipeline.
 
         This method:
@@ -116,6 +164,7 @@ class InferencePipeline(TrainingPipeline):
         - Initializes the model and loads weights.
         - Runs inference on the test set and logs performance.
         """
+        self._set_transforms()
         self._load_dataset_from_folder()
-        self._initialize_model_with_weights()
+        self.initialize_model_with_weights()
         self._run_infer(data_loader=self.test_loader)
