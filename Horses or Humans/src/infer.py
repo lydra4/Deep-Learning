@@ -11,7 +11,6 @@ from utils.seed_utils import fix_seed
 
 @hydra.main(version_base=None, config_path="../conf", config_name="inference.yaml")
 def main(cfg: omegaconf.DictConfig):
-    print(cfg)
     logger = logging.getLogger(__name__)
     logger.info("Setting up logging configuration.\n")
     setup_logging(
