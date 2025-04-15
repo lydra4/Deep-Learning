@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional
+from typing import Optional, Tuple
 
 import cv2
 import numpy as np
@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
+from PIL import Image
 from torchvision.models import (
     ConvNeXt_Small_Weights,
     EfficientNet_B0_Weights,
@@ -134,7 +135,19 @@ class InferencePipeline(TrainingPipeline):
 
         return superimposed_img
 
-    # def classify_and_generate_cam(self, image: Image.Image) -> Tuple[str, np.ndarray]:
+    def classify_and_generate_cam(self, image: Image.Image) -> Tuple[str, np.ndarray]:
+        image_tensor = self.transform(img=image).unsqueeze(0).to(self.device)
+        outputs = self.model(image_tensor)
+        prediction = torch.argmax(outputs, dim=1).item()
+        label = "horse" if prediction == 0 else "human"
+
+        cam_image = self.generate_cam(
+            image_tensor=image_tensor,
+            original_image=np.array(image),
+            target_class=prediction,
+        )
+
+        return label, cam_image
 
     def _run_infer(self, data_loader: torch.utils.data.DataLoader) -> None:
         """Performs inference on the test dataset and logs the accuracy.
@@ -168,3 +181,7 @@ class InferencePipeline(TrainingPipeline):
         self._load_dataset_from_folder()
         self.initialize_model_with_weights()
         self._run_infer(data_loader=self.test_loader)
+
+    def batch_infer(self):
+        self._set_transforms()
+        self.initialize_model_with_weights()
