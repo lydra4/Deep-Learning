@@ -21,23 +21,23 @@ from utils.general_utils import mlflow_init, mlflow_log
 
 class TrainingPipeline:
     """
-    A training pipeline for image classification using PyTorch.
+    TrainingPipeline handles image classification model training with PyTorch.
 
-    This class handles loading datasets, initializing models, training, evaluation, and logging with MLflow.
+    This class includes methods for dataset loading, transformation, model instantiation,
+    loss/optimizer setup, evaluation, MLflow logging, and checkpointing.
 
     Attributes:
-        cfg (dict): Configuration dictionary containing model, dataset, training, and MLflow parameters.
-        logger (Optional[logging.Logger]): Logger instance for logging messages.
-        device (torch.device): The device (CPU or GPU) to use for model training.
-        dataset (Optional[Dataset]): Dataset object for image data.
-        train_loader (Optional[DataLoader]): DataLoader for training data.
-        test_loader (Optional[DataLoader]): DataLoader for test data.
-        model (Optional[nn.Module]): Model to be trained.
-        criterion (Optional[nn.Module]): Loss function used in training.
-        optimizer (Optional[optim.Optimizer]): Optimizer used for training.
-        mlflow_init_status (Optional[bool]): Status of MLflow initialization.
-        mlflow_run (Optional[mlflow.ActiveRun]): MLflow run object.
-        epoch (Optional[int]): Current epoch in the training process.
+        cfg (dict): Configuration settings including paths, hyperparameters, and MLflow configs.
+        logger (Optional[logging.Logger]): Logger instance for status and error messages.
+        device (torch.device): CUDA or CPU device for computation.
+        transform (Optional[Compose]): Image transformation pipeline.
+        train_loader, val_loader, test_loader (Optional[DataLoader]): DataLoaders for respective datasets.
+        model (Optional[nn.Module]): The neural network model.
+        criterion (Optional[nn.Module]): Loss function.
+        optimizer (Optional[optim.Optimizer]): Optimizer.
+        mlflow_init_status (Optional[bool]): Whether MLflow initialized successfully.
+        mlflow_run (Optional[mlflow.ActiveRun]): MLflow run instance.
+        epoch (Optional[int]): Current epoch number during training.
     """
 
     def __init__(
@@ -57,12 +57,32 @@ class TrainingPipeline:
         self.train_loader: Optional[DataLoader] = None
         self.val_loader: Optional[DataLoader] = None
         self.test_loader: Optional[DataLoader] = None
+        self.transform: Optional[transforms.Compose] = None
         self.model = None
         self.criterion = None
         self.optimizer = None
         self.mlflow_init_status = None
         self.mlflow_run = None
         self.epoch = None
+
+    def _set_transforms(self):
+        """
+        Initializes the image transformation pipeline.
+
+        The transformations include:
+        - Resizing the image to a specified square size.
+        - Converting the image to a tensor.
+
+        Sets the result to `self.transform`.
+        """
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize(
+                    (self.cfg["transform_resize"], self.cfg["transform_resize"])
+                ),
+                transforms.ToTensor(),
+            ]
+        )
 
     def _load_dataset_from_folder(self):
         """
@@ -73,15 +93,6 @@ class TrainingPipeline:
 
         Logs dataset loading information and class-to-index mapping.
         """
-        transform = transforms.Compose(
-            [
-                transforms.Resize(
-                    (self.cfg["transform_resize"], self.cfg["transform_resize"])
-                ),
-                transforms.ToTensor(),
-            ]
-        )
-
         self.logger.info(
             f"Loading dataset from {self.cfg.environ.path_to_processed_data}.\n"
         )
@@ -89,7 +100,7 @@ class TrainingPipeline:
         self.train_loader = DataLoader(
             dataset=datasets.ImageFolder(
                 root=os.path.join(self.cfg.environ.path_to_processed_data, "train"),
-                transform=transform,
+                transform=self.transform,
             ),
             batch_size=self.cfg.batch_size,
             shuffle=True,
@@ -98,7 +109,7 @@ class TrainingPipeline:
         self.val_loader = DataLoader(
             dataset=datasets.ImageFolder(
                 root=os.path.join(self.cfg.environ.path_to_processed_data, "val"),
-                transform=transform,
+                transform=self.transform,
             ),
             batch_size=self.cfg.batch_size,
             shuffle=False,
@@ -107,7 +118,7 @@ class TrainingPipeline:
         self.test_loader = DataLoader(
             dataset=datasets.ImageFolder(
                 root=os.path.join(self.cfg.environ.path_to_processed_data, "test"),
-                transform=transform,
+                transform=self.transform,
             ),
             batch_size=self.cfg.batch_size,
             shuffle=False,
@@ -297,6 +308,7 @@ class TrainingPipeline:
         5. Setting up MLflow
         6. Training the model
         """
+        self._set_transforms()
         self._load_dataset_from_folder()
         self._instantiate_model()
         self._set_criterion_optimizer()
