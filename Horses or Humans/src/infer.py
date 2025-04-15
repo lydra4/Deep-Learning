@@ -31,7 +31,7 @@ def main(cfg: omegaconf.DictConfig):
     logger.info(f"Device set to {device} for inference.\n")
 
     inference_pipeline = InferencePipeline(cfg=cfg, logger=logger, device=device)
-    inference_pipeline.perform_inference()
+    inference_pipeline.run_inference()
 
 
 if __name__ == "__main__":
