@@ -1,12 +1,20 @@
+import io
 import logging
 import os
 import re
 from typing import List, Optional
 
+import faiss
+import fitz
 import omegaconf
+import pytesseract
+import torch
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
+from PIL import Image
+from sentence_transformers import SentenceTransformer
 from tika import parser
+from transformers import CLIPModel, CLIPProcessor
 
 
 class EPUBProcessor(BaseLoader):
@@ -32,6 +40,15 @@ class EPUBProcessor(BaseLoader):
         """
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
+
+        self.text_encoder = SentenceTransformer(cfg.embeddings.text_model)
+        self.clip_model = CLIPModel(cfg.embeddings.vision_model)
+        self.clip_processor = CLIPProcessor(cfg.embeddings.vision_model)
+
+        self.faiss_dim = self.clip_model.config.projection_dim
+        self.faiss_index = faiss.IndexFlatL2(self.faiss_dim)
+        self.embeddings: Optional[List] = []
+        self.metadata: Optional[List] = []
 
     def _preprocess_text(self, text: str) -> str:
         """Cleans and preprocesses the extracted text.
@@ -71,6 +88,38 @@ class EPUBProcessor(BaseLoader):
         )
 
         return text
+
+    def _extract_images(self, epub_path: str) -> List[Image.Image]:
+        doc = fitz.open(filename=epub_path)
+        images = []
+        for page in doc:
+            for _, image in enumerate(page.get_images(full=True)):
+                xref = image[0]
+                base_image = doc.extract_image(xref=xref)
+                image_bytes = base_image["image"]
+                image_pil = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+                images.append(image_pil)
+
+        return images
+
+    def _embed_and_index_images(
+        self, image: Image.Image, fallback_caption: str, source: str
+    ):
+        ocr_text = pytesseract.image_to_string(image=image).strip().lower()
+
+        caption = ocr_text if ocr_text else fallback_caption
+
+        inputs = self.clip_processor(
+            text=caption, images=image, return_tensors="pt", padding=True
+        )
+        with torch.no_grad():
+            embedding = self.clip_model.get_image_features(**inputs)
+
+        embedding = embedding / embedding.norm(p=2, dim=-1, keepdim=True)
+        np_embedding = embedding.cpu().numpy().astype("float32")
+
+        self.faiss_index.add(np_embedding.reshape(1, -1))
+        self.metadata.append({"caption": caption, "source": source})
 
     def load(self) -> List[Document]:
         """Loads and processes EPUB files from the specified directory.
