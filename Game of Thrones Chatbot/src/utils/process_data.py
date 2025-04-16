@@ -180,7 +180,9 @@ class EPUBProcessor(BaseLoader):
                 self.logger.info(f"Image Extraction from {book_name} successful.\n")
                 all_images.extend(images)
 
-                self.logger.info(f"Successfull!\n")
+                self.logger.info(
+                    f"Extracted {len(images)} and {len(cleaned_text.split())} words from {book_name}\n"
+                )
 
             except Exception as e:
                 self.logger.error(f"Error Processing {book_name}: {e}", exc_info=True)
@@ -190,4 +192,4 @@ class EPUBProcessor(BaseLoader):
                 f"No valid text extracted from {self.cfg.preprocessing.path}"
             )
 
-        return extracted_documents
+        return extracted_documents, all_images
