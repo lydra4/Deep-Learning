@@ -1,8 +1,9 @@
 import logging
 import os
 import re
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
+import clip
 import omegaconf
 import torch
 from langchain.docstore.document import Document
@@ -13,6 +14,7 @@ from langchain.text_splitter import (
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_experimental.text_splitter import SemanticChunker
+from PIL import Image
 
 
 class PerformEmbeddings:
@@ -50,6 +52,7 @@ class PerformEmbeddings:
         self.embedding_model: Optional[HuggingFaceInstructEmbeddings] = None
         self.embeddings_path: Optional[str] = None
         self.embeddings_model_name: Optional[str] = None
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     def _split_text(self) -> List[Document]:
         """
@@ -94,17 +97,16 @@ class PerformEmbeddings:
         Returns:
             HuggingFaceInstructEmbeddings: The loaded embedding model.
         """
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         self.logger.info(f"Embedding model will be loaded to {device}.\n")
 
         model_config = {
             "model_name": self.cfg.embeddings.embeddings_model.model_name,
             "show_progress": self.cfg.embeddings.embeddings_model.show_progress,
-            "model_kwargs": {"device": device},
+            "model_kwargs": {"device": self.device},
         }
         self.embedding_model = HuggingFaceInstructEmbeddings(**model_config)
 
-        self.logger.info(f"Embedding Model loaded to {device.upper()}.\n")
+        self.logger.info(f"Embedding Model loaded to {self.device.upper()}.\n")
 
         return self.embedding_model
 
@@ -146,6 +148,14 @@ class PerformEmbeddings:
         )
 
         self.logger.info("Successfully saved.\n")
+
+    def _embed_images(self, images: List[Tuple[str, Image.Image]]) -> None:
+        self.logger.info(f"CLIP model will be loaded to {self.device}.\n")
+
+        model, preprocess = clip.load(
+            name=self.cfg.embeddings.embeddings_model.clip_model_name,
+            device=self.device,
+        )
 
     def generate_vectordb(self) -> FAISS:
         """
