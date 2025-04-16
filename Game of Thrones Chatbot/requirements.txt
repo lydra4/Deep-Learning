@@ -25,7 +25,6 @@ pyarrow
 pydantic==2.10.6
 pyLDAvis
 pylint
-PyMuPDF
 pytesseract
 python-json-logger
 ragas
