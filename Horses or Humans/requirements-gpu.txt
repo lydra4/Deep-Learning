@@ -1,3 +1,4 @@
+gradio
 hydra-core
 matplotlib
 mlflow
