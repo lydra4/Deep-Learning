@@ -10,6 +10,12 @@ ARG REPO_DIR="."
 # Create non-root user
 RUN useradd -l -m -s /bin/bash -u ${NON_ROOT_UID} ${NON_ROOT_USER}
 
+# Install system-level dependencies required for OpenCV
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set environment
 ENV PYTHONIOENCODING=utf8
 ENV LANG="C.UTF-8"
