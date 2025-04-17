@@ -4,6 +4,8 @@ import re
 from typing import List, Optional, Tuple
 
 import clip
+import faiss
+import numpy as np
 import omegaconf
 import torch
 from langchain.docstore.document import Document
@@ -35,6 +37,7 @@ class PerformEmbeddings:
         self,
         cfg: omegaconf.DictConfig,
         documents: List[Document],
+        images: Optional[List[Tuple[str, Image.Image]]],
         logger: Optional[logging.Logger] = None,
     ) -> None:
         """
@@ -48,6 +51,7 @@ class PerformEmbeddings:
         self.cfg = cfg
         self.logger = logger or logging.getLogger(__name__)
         self.documents = documents
+        self.images = images
         self.texts: List[Document] = []
         self.embedding_model: Optional[HuggingFaceInstructEmbeddings] = None
         self.embeddings_path: Optional[str] = None
@@ -97,7 +101,7 @@ class PerformEmbeddings:
         Returns:
             HuggingFaceInstructEmbeddings: The loaded embedding model.
         """
-        self.logger.info(f"Embedding model will be loaded to {device}.\n")
+        self.logger.info(f"Embedding model will be loaded to {self.device}.\n")
 
         model_config = {
             "model_name": self.cfg.embeddings.embeddings_model.model_name,
@@ -149,12 +153,56 @@ class PerformEmbeddings:
 
         self.logger.info("Successfully saved.\n")
 
-    def _embed_images(self, images: List[Tuple[str, Image.Image]]) -> None:
+    def _embed_images(self) -> None:
         self.logger.info(f"CLIP model will be loaded to {self.device}.\n")
 
         model, preprocess = clip.load(
             name=self.cfg.embeddings.embeddings_model.clip_model_name,
             device=self.device,
+        )
+
+        documents = []
+        embeddings = []
+
+        for name, image in self.images:
+            try:
+                preprocessed_image = preprocess(img=image).unsqueeze(0).to(self.device)
+                with torch.no_grad():
+                    embedding = model.encode_image(preprocessed_image)
+                embedding = embedding.cpu().squeeze(0).numpy()
+
+                documents.append(
+                    Document(page_content="", metadata={"image_name": name})
+                )
+                embeddings.append(embedding)
+
+            except Exception as e:
+                self.logger.warning(f"Failed to embed image {image}: {e}.\n")
+
+        if not embeddings:
+            self.logger.warning("No image embeddings were generated.")
+
+        clip_model_name_clean = re.sub(
+            r'[<>:"/\\|?*]', "_", self.cfg.embeddings.embeddings_model.clip_model_name
+        )
+        image_embeddings_path = os.path.join(
+            self.cfg.embeddings.embed_images.embeddings_path, clip_model_name_clean
+        )
+
+        os.makedirs(image_embeddings_path, exist_ok=True)
+
+        self.logger.info(f"Saving image embeddings to {image_embeddings_path}.\n")
+
+        embedding_matrix = np.array(embeddings).astype("float32")
+        index = faiss.IndexFlatL2(embedding_matrix.shape[1])
+        index.add(embedding_matrix)
+
+        image_vectordb = FAISS(
+            embedding_function=None, index=index, documents=documents
+        )
+        image_vectordb.save_local(
+            folder_path=image_embeddings_path,
+            index_name=self.cfg.embeddings.embed_images.index_name,
         )
 
     def generate_vectordb(self) -> FAISS:
@@ -167,3 +215,6 @@ class PerformEmbeddings:
         self.logger.info("Starting document processing and generating embeddings.\n")
         self._split_text()
         self._embed_documents()
+
+        if self.images:
+            self._embed_images()
