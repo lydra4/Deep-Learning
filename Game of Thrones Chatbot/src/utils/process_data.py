@@ -7,10 +7,11 @@ from typing import List, Optional, Tuple
 
 import omegaconf
 import pytesseract
+from bs4 import BeautifulSoup
+from ebooklib import ITEM_DOCUMENT, epub
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
 from PIL import Image
-from tika import parser
 from tqdm import tqdm
 
 
@@ -76,6 +77,17 @@ class EPUBProcessor(BaseLoader):
         )
 
         return text
+
+    def _extract_text_from_epub(self, epub_path: str) -> str:
+        book = epub.read_epub(epub_path)
+        full_text = []
+
+        for item in book.get_items_of_type(ITEM_DOCUMENT):
+            soup = BeautifulSoup(item.get_content(), "html.parser")
+            visible_text = soup.get_text(separator=" ", strip=True)
+            full_text.append(visible_text)
+
+        return "\n".join(full_text)
 
     def _extract_images_from_epub(
         self, epub_file: str
@@ -163,9 +175,7 @@ class EPUBProcessor(BaseLoader):
             self.logger.info(f"Processing {book_name}.\n")
 
             try:
-                raw_text = (
-                    parser.from_file(epub_file).get("content", "").lower().strip()
-                )
+                raw_text = self._extract_text_from_epub(epub_path=epub_file)
 
                 if not raw_text:
                     self.logger.warning(f"No text extracted from {book_name}")
