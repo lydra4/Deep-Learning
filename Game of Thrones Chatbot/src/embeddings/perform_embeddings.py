@@ -114,6 +114,9 @@ class PerformEmbeddings:
 
         return self.embedding_model
 
+    def _normalize_embeddings(self, embeddings):
+        return embeddings / np.linalg.norm(x=embeddings, axis=1, keepdims=True)
+
     def _embed_documents(self) -> FAISS:
         """
         Splits the documents, generates embeddings, and saves the vector store.
@@ -140,8 +143,8 @@ class PerformEmbeddings:
 
         self.logger.info("Generating Vector Embeddings.\n")
 
-        vectordb = FAISS.from_documents(
-            documents=self.texts, embedding=self.embedding_model
+        vectordb = self._normalize_embeddings(
+            FAISS.from_documents(documents=self.texts, embedding=self.embedding_model)
         )
 
         self.logger.info("Saving Vector Embeddings.\n")
@@ -193,17 +196,11 @@ class PerformEmbeddings:
 
         self.logger.info(f"Saving image embeddings to {image_embeddings_path}.\n")
 
-        embedding_matrix = np.array(embeddings).astype("float32")
-        index = faiss.IndexFlatL2(embedding_matrix.shape[1])
+        embedding_matrix = self._normalize_embeddings(
+            np.array(embeddings).astype("float32")
+        )
+        index = faiss.IndexHNSWFlat(embedding_matrix.shape[1], 32)
         index.add(embedding_matrix)
-
-        image_vectordb = FAISS(
-            embedding_function=None, index=index, documents=documents
-        )
-        image_vectordb.save_local(
-            folder_path=image_embeddings_path,
-            index_name=self.cfg.embeddings.embed_images.index_name,
-        )
 
     def generate_vectordb(self) -> FAISS:
         """
