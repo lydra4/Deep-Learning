@@ -1,5 +1,7 @@
 autoflake
+beautifulsoup4
 datasets
+ebooklib
 faiss-cpu
 gensim
 git+https://github.com/openai/CLIP.git@main#egg=clip
@@ -32,7 +34,6 @@ ragas
 rich
 scikit-learn
 sentence-transformers==2.2.2
-tika
 tqdm
 wordcloud
 torch==2.4.1
