@@ -11,6 +11,7 @@ from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
 from PIL import Image
 from tika import parser
+from tqdm import tqdm
 
 
 class EPUBProcessor(BaseLoader):
@@ -157,7 +158,7 @@ class EPUBProcessor(BaseLoader):
         extracted_documents = []
         all_images = []
 
-        for epub_file in epub_files:
+        for epub_file in tqdm(iterable=epub_files, desc="GOT Books"):
             book_name = os.path.splitext(os.path.basename(epub_file))[0]
             self.logger.info(f"Processing {book_name}.\n")
 
