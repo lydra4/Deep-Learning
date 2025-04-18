@@ -143,8 +143,10 @@ class PerformEmbeddings:
 
         self.logger.info("Generating Vector Embeddings.\n")
 
-        vectordb = self._normalize_embeddings(
-            FAISS.from_documents(documents=self.texts, embedding=self.embedding_model)
+        vectordb = FAISS.from_documents(
+            documents=self.texts,
+            embedding=self.embedding_model,
+            normalize_L2=True,
         )
 
         self.logger.info("Saving Vector Embeddings.\n")
