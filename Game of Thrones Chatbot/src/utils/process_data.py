@@ -102,35 +102,28 @@ class EPUBProcessor(BaseLoader):
                         image = Image.open(BytesIO(image_data)).convert("RGB")
 
                         try:
-                            osd = pytesseract.image_to_osd(image=image)
-                            rotation_match = re.search(
-                                r"Orientation in degress: (\d+)", osd
+                            osd = pytesseract.image_to_osd(
+                                image=image, output_type=pytesseract.Output.DICT
                             )
+                            degrees = int(osd["orientation"])
 
-                            if rotation_match:
-                                degrees = int(rotation_match.group(1))
-
-                                if degrees != 0:
-                                    image = image.rotate(-degrees, expand=True)
-                                    self.logger.info(
-                                        f"Rotated {file} by {degrees} degrees.\n"
-                                    )
-                                else:
-                                    self.logger.info(
-                                        f"No rotation needed for {file}.\n"
-                                    )
+                            if degrees != 0:
+                                image = image.rotate(-degrees, expand=True)
+                                self.logger.info(
+                                    f"Rotated {file} by {degrees} degrees.\n"
+                                )
                             else:
-                                self.logger.warning(f"OSD parsing failed for {file}.\n")
+                                self.logger.info(f"No rotation needed for {file}.\n")
 
                         except Exception as ocr_error:
                             self.logger.info(
-                                f"No text detected or OSD failed for {file}: {ocr_error}."
+                                f"No text detected or OSD failed for {file}: {ocr_error}.\n"
                             )
 
                         images.append((file, image))
 
                     except Exception as e:
-                        self.logger.warning(f"Could not read image {file}: {e}.")
+                        self.logger.warning(f"Could not read image {file}: {e}.\n")
 
         return images
 
@@ -192,7 +185,7 @@ class EPUBProcessor(BaseLoader):
                 all_images.extend(images)
 
                 self.logger.info(
-                    f"Extracted {len(images)} images and {len(cleaned_text.split())} words from {book_name}\n"
+                    f"Extracted {len(images)} images and {len(cleaned_text.split()):,} words from {book_name}\n"
                 )
 
             except Exception as e:
