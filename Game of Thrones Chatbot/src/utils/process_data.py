@@ -192,7 +192,7 @@ class EPUBProcessor(BaseLoader):
                 all_images.extend(images)
 
                 self.logger.info(
-                    f"Extracted {len(images)} and {len(cleaned_text.split())} words from {book_name}\n"
+                    f"Extracted {len(images)} images and {len(cleaned_text.split())} words from {book_name}\n"
                 )
 
             except Exception as e:
